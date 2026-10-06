@@ -1,26 +1,53 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Design tokens. Components reference these by role (bg-paper, text-ink,
+ * font-display), never by value, so the whole look can change here.
+ * Palette and fonts are provisional until the design system pass.
+ */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+@theme {
+  /* Tailwind's default palette is removed so only these colors exist. */
+  --color-*: initial;
+  --color-paper: #f5f0e8;
+  --color-surface: #ede6da;
+  --color-ink: #2b2622;
+  --color-muted: #6b625a;
+  --color-hairline: #d8cfc2;
+  --color-accent: #a0644a;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --ease-calm: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-step-in: step-in 700ms var(--ease-calm) both;
+
+  @keyframes step-in {
+    from {
+      opacity: 0;
+      transform: translateY(0.75rem);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Font families come from next/font CSS variables set in layout.tsx. */
+@theme inline {
+  --font-*: initial;
+  --font-display: var(--font-cormorant), Georgia, serif;
+  --font-body: var(--font-newsreader), Georgia, serif;
+}
+
+@layer base {
+  html {
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+  }
+
+  ::selection {
+    background-color: var(--color-ink);
+    color: var(--color-paper);
+  }
 }
