@@ -124,9 +124,29 @@ describe("birthTimeToUtc", () => {
     });
   });
 
-  it("throws on an unknown zone", () => {
-    expect(() =>
-      birthTimeToUtc({ year: 1990, month: 6, day: 14 }, { hour: 12, minute: 0 }, "Mars/Olympus"),
-    ).toThrow(/Mars\/Olympus/);
+  describe("bad input", () => {
+    const date = { year: 1990, month: 6, day: 14 };
+    const time = { hour: 12, minute: 0 };
+
+    it("throws on an unknown zone", () => {
+      expect(() => birthTimeToUtc(date, time, "Mars/Olympus")).toThrow(/Mars\/Olympus/);
+    });
+
+    it.each(["local", "system", "default", "UTC+3", ""])(
+      'refuses "%s" instead of falling back to the machine\'s zone or a fixed offset',
+      (zone) => {
+        expect(() => birthTimeToUtc(date, time, zone)).toThrow(/not an IANA zone/);
+      },
+    );
+
+    it("keeps the birth date and time out of the error", () => {
+      expect(() =>
+        birthTimeToUtc({ year: 1990, month: 2, day: 30 }, { hour: 14, minute: 45 }, "Europe/London"),
+      ).toThrow(
+        expect.objectContaining({
+          message: expect.not.stringMatching(/1990|30|14|45/),
+        }),
+      );
+    });
   });
 });

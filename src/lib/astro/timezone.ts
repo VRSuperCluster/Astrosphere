@@ -1,18 +1,22 @@
-import { DateTime } from "luxon";
+import { DateTime, IANAZone } from "luxon";
 import type { BirthMoment, DstAdjustment } from "@/types/chart";
 import type { BirthDate, BirthTime } from "@/types/questionnaire";
 
 /**
  * Resolves wall-clock birth time in `zone` (IANA, from the geocoder) to UTC.
  * Never uses the server's or browser's zone.
+ * Error messages leave out the birth date and time so they stay out of logs.
  */
 export function birthTimeToUtc(date: BirthDate, time: BirthTime, zone: string): BirthMoment {
-  const requested = { ...date, ...time };
-  const local = DateTime.fromObject(requested, { zone });
+  // Luxon reads "local", "system" and "default" as the machine's zone, and
+  // "UTC+3" as a fixed offset with no history.
+  if (!IANAZone.isValidZone(zone)) {
+    throw new Error(`Cannot resolve birth time: "${zone}" is not an IANA zone`);
+  }
+
+  const local = DateTime.fromObject({ ...date, ...time }, { zone });
   if (!local.isValid) {
-    throw new Error(
-      `Cannot resolve ${JSON.stringify(requested)} in zone "${zone}": ${local.invalidExplanation ?? local.invalidReason}`,
-    );
+    throw new Error(`Cannot resolve birth time in zone "${zone}": ${local.invalidReason}`);
   }
 
   // Luxon moves a time inside a spring-forward gap forward by the gap, so the
