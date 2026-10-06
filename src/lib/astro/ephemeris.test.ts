@@ -60,6 +60,42 @@ describe("astronomyEngine.longitude", () => {
   });
 });
 
+/** Meeus, Astronomical Algorithms (2nd ed.), examples 12.a and 22.a: 10 April 1987, 0h. */
+const MEEUS_1987 = new Date("1987-04-10T00:00:00Z");
+
+describe("astronomyEngine.siderealTime", () => {
+  it("matches Meeus", () => {
+    // 13h 10m 46.1351s
+    expect(astronomyEngine.siderealTime(MEEUS_1987)).toBeCloseTo(197.69223, 3);
+  });
+
+  it.each([
+    // JPL Horizons, quantity 7 at Greenwich (000).
+    [INSTANTS[0], 280.4674871], // 18h 41m 52.1969s
+    [INSTANTS[2], 105.0876375], // 07h 00m 21.0330s
+    [INSTANTS[3], 14.6730054], // 00h 58m 41.5213s
+  ])("matches JPL Horizons at %s", (iso, expected) => {
+    expect(
+      Math.abs(angularDifference(astronomyEngine.siderealTime(new Date(iso)), expected)),
+    ).toBeLessThan(0.001);
+  });
+
+  it("throws an Error on an invalid date", () => {
+    expect(() => astronomyEngine.siderealTime(new Date(Number.NaN))).toThrow(Error);
+  });
+});
+
+describe("astronomyEngine.obliquity", () => {
+  it("matches Meeus", () => {
+    // 23° 26′ 36.850″
+    expect(astronomyEngine.obliquity(MEEUS_1987)).toBeCloseTo(23.443569, 4);
+  });
+
+  it("throws an Error on an invalid date", () => {
+    expect(() => astronomyEngine.obliquity(new Date(Number.NaN))).toThrow(Error);
+  });
+});
+
 describe("planetLongitudes", () => {
   it("returns every planet", () => {
     const longitudes = planetLongitudes(new Date(INSTANTS[2]));
@@ -72,7 +108,11 @@ describe("planetLongitudes", () => {
   });
 
   it("reads from whichever provider it is given", () => {
-    const fixed: EphemerisProvider = { longitude: (planet) => PLANETS.indexOf(planet) * 30 };
+    const fixed: EphemerisProvider = {
+      longitude: (planet) => PLANETS.indexOf(planet) * 30,
+      siderealTime: () => 0,
+      obliquity: () => 23.44,
+    };
     expect(planetLongitudes(new Date(INSTANTS[0]), fixed)).toMatchObject({
       sun: 0,
       moon: 30,
