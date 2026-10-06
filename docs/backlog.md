@@ -13,7 +13,7 @@ Decisions we've deferred on purpose. Check this at the start of each phase.
   5. Route handler: questionnaire answers in (validated with zod), chart JSON out.
   6. Chart screen: minimal SVG wheel, placeholder summary text, unknown-time note.
 - **The chart gets its own `/chart` page.** When the questionnaire finishes, the answers go into the tab's `sessionStorage`; `/chart` reads them from there. A refresh keeps the chart (Phase 3 needs this so a refresh doesn't re-trigger the AI call), closing the tab erases it, and nothing is stored on a server. Opening `/chart` with nothing saved sends the visitor to the start. The questionnaire pre-fills from the same storage when the visitor goes back. Birth data never goes in the URL.
-- **Reference charts for the accuracy check:** the owner's chart plus two well-known public ones. The owner provides their birth date, time and place, and either the astro.com positions (Sun to Pluto, Ascendant, MC) or compares against our computed ones.
+- **Reference charts for the accuracy check:** Donald Trump, Keanu Reeves and Jennifer Lawrence, all public, so no private birth data goes into the repo. The owner sends astro.com's data for each: date, local and UTC time, coordinates, and positions from Sun to Pluto plus Ascendant and MC. The tests use astro.com's coordinates and UTC time rather than our geocoder's, so they compare the maths on identical inputs. The birth time doesn't need to be the true one; if astro.com has none, pick one and enter it in both.
 - **Rewrite the unknown-time note.** The spec's line ("solar view… house placements are approximate") uses astrology jargon, which the brand voice forbids.
 
 ## Later (after the core flow works)
