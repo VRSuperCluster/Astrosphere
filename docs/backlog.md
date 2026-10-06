@@ -4,7 +4,17 @@ Decisions we've deferred on purpose. Check this at the start of each phase.
 
 ## Phase 2
 
-- **Add Vitest** (needs approval as a new dependency). First targets: date and time validation in `src/lib/questionnaire/`, then the DST cases the rules require (spring-forward gap, autumn fall-back, a pre-1980 date in a zone whose rules changed).
+- **Add Vitest** (approved as a dev dependency). First targets: date and time validation in `src/lib/questionnaire/`, then the DST cases the rules require (spring-forward gap, autumn fall-back, a pre-1980 date in a zone whose rules changed).
+- **Commit order.** Each step is testable on its own:
+  1. Vitest, then birth time to UTC (luxon, zone from the place step, DST flags) with the tests above.
+  2. Ephemeris adapter (`ephemeris.ts`, `EphemerisProvider`): tropical geocentric longitudes, Sun to Pluto.
+  3. Chart calculation: Ascendant and MC from sidereal time, latitude and obliquity; Whole Sign houses; unknown time casts for local noon with the Sun's sign as house 1. Types in `src/types/chart.ts`.
+  4. Accuracy tests against astro.com, within about 0.1°.
+  5. Route handler: questionnaire answers in (validated with zod), chart JSON out.
+  6. Chart screen: minimal SVG wheel, placeholder summary text, unknown-time note.
+- **The chart gets its own `/chart` page.** When the questionnaire finishes, the answers go into the tab's `sessionStorage`; `/chart` reads them from there. A refresh keeps the chart (Phase 3 needs this so a refresh doesn't re-trigger the AI call), closing the tab erases it, and nothing is stored on a server. Opening `/chart` with nothing saved sends the visitor to the start. The questionnaire pre-fills from the same storage when the visitor goes back. Birth data never goes in the URL.
+- **Reference charts for the accuracy check:** the owner's chart plus two well-known public ones. The owner provides their birth date, time and place, and either the astro.com positions (Sun to Pluto, Ascendant, MC) or compares against our computed ones.
+- **Rewrite the unknown-time note.** The spec's line ("solar view… house placements are approximate") uses astrology jargon, which the brand voice forbids.
 
 ## Later (after the core flow works)
 
@@ -19,4 +29,5 @@ Decisions we've deferred on purpose. Check this at the start of each phase.
 - Times use the 24-hour clock.
 - First names are capped at 40 characters (`MAX_FIRST_NAME_LENGTH`).
 - Place names come back in English (`language=en`) and the list shows up to 8 matches.
+- The questionnaire is anchored to the top on every screen size, not vertically centred, so results and messages appearing under a field don't shift the page.
 - The terracotta accent is only used for underlines and focus outlines: as text on paper it's about 4.2:1, below the WCAG AA 4.5:1 minimum.
