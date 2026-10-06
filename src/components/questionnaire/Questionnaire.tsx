@@ -6,12 +6,25 @@ import { QuestionPrompt } from "@/components/ui/QuestionPrompt";
 import { StepTransition } from "@/components/ui/StepTransition";
 import { describeBirthDate } from "@/lib/questionnaire/birth-date";
 import { describeBirthTime } from "@/lib/questionnaire/birth-time";
+import {
+  CHANGE_STANCE_OPTIONS,
+  LIFE_AREA_OPTIONS,
+  labelFor,
+} from "@/lib/questionnaire/context-questions";
 import type { QuestionnaireAnswers } from "@/types/questionnaire";
 import { BirthDateStep } from "./BirthDateStep";
 import { BirthTimeStep } from "./BirthTimeStep";
+import { ChoiceStep } from "./ChoiceStep";
 import { FirstNameStep } from "./FirstNameStep";
 
-const STEPS = ["birthDate", "birthTime", "firstName", "notBuiltYet"] as const;
+const STEPS = [
+  "birthDate",
+  "birthTime",
+  "firstName",
+  "lifeArea",
+  "changeStance",
+  "notBuiltYet",
+] as const;
 type StepId = (typeof STEPS)[number];
 
 export function Questionnaire() {
@@ -47,6 +60,26 @@ export function Questionnaire() {
             onContinue={(firstName) => save({ firstName })}
           />
         );
+      case "lifeArea":
+        return (
+          <ChoiceStep
+            title="What area of your life feels most in motion right now?"
+            description="Pick the one you think about when you can't sleep. This question is optional."
+            options={LIFE_AREA_OPTIONS}
+            initial={answers.lifeArea}
+            onContinue={(lifeArea) => save({ lifeArea })}
+          />
+        );
+      case "changeStance":
+        return (
+          <ChoiceStep
+            title="What's your relationship with change?"
+            description="Answer for who you are, not who you'd like to be. Also optional."
+            options={CHANGE_STANCE_OPTIONS}
+            initial={answers.changeStance}
+            onContinue={(changeStance) => save({ changeStance })}
+          />
+        );
       case "notBuiltYet":
         return <NotBuiltYetStep answers={answers} />;
     }
@@ -77,6 +110,10 @@ function NotBuiltYetStep({ answers }: { answers: QuestionnaireAnswers }) {
         : "Time unknown."
       : null,
     answers.firstName ? `${answers.firstName}.` : null,
+    answers.lifeArea ? `${labelFor(LIFE_AREA_OPTIONS, answers.lifeArea)}.` : null,
+    answers.changeStance
+      ? `${labelFor(CHANGE_STANCE_OPTIONS, answers.changeStance)}.`
+      : null,
   ].filter(Boolean);
 
   return (

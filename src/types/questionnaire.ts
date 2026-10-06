@@ -18,12 +18,28 @@ export interface BirthTime {
 /** An unknown time later becomes a solar chart (Sun's sign as house 1). */
 export type BirthTimeAnswer = { known: true; time: BirthTime } | { known: false };
 
+/** Optional context question: which part of life is changing most right now. */
+export type LifeArea = "relationships" | "career" | "identity" | "health" | "creativity";
+
+/** Optional context question: how the user tends to meet change. */
+export type ChangeStance = "seeksIt" | "resistsIt" | "itDepends" | "inTheMiddle";
+
+/** One selectable answer to a single-select question. */
+export interface ChoiceOption<T extends string> {
+  value: T;
+  label: string;
+}
+
 /** Answers collected so far. Each step fills in its own field. */
 export interface QuestionnaireAnswers {
   birthDate?: BirthDate;
   birthTime?: BirthTimeAnswer;
   /** Trimmed, inner whitespace collapsed. Used to personalise calendar entries. */
   firstName?: string;
+  /** Undefined when skipped. */
+  lifeArea?: LifeArea;
+  /** Undefined when skipped. */
+  changeStance?: ChangeStance;
 }
 
 /** Raw text from the three date inputs, before validation. */
