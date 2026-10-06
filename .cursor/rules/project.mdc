@@ -22,7 +22,7 @@ Full product spec: `docs/spec.md`. Read the relevant section when starting a new
   - Positions are tropical, geocentric ecliptic longitude of date.
   - Ascendant and MC are computed in our own code from local sidereal time, latitude, and obliquity.
   - House system: Whole Sign. Each house is one full sign, starting from the Ascendant's sign. The unknown-birth-time solar chart uses the same logic with the Sun's sign as house 1.
-  - Verify against astro.com for at least three known birth charts; planets should match within ~0.1°.
+  - Verify against astro.com or Astro-Seek (both run Swiss Ephemeris) for at least three known birth charts; planets should match within ~0.1°.
 - **Place of birth (geocoding):** Open-Meteo Geocoding API (`https://geocoding-api.open-meteo.com/v1/search`), no API key. Use its `latitude`, `longitude` and `timezone` (IANA) fields. Call it through a route handler (`src/app/api/places/route.ts`) so the provider can be swapped later; debounce autocomplete input on the client. Note: the free tier is for non-commercial use; revisit before any paid launch.
 - **Timezones:** `luxon`. Convert birth local time to UTC with `DateTime.fromObject({...}, { zone: <IANA zone from the geocoder> }).toUTC()`, never the server's or browser's zone. Handle DST edge cases explicitly:
   - Nonexistent local time (spring-forward gap): detect by round-tripping back to local time and comparing; shift forward and keep a flag.
