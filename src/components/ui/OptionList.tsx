@@ -16,14 +16,13 @@ export function OptionList<T extends string>({
 }: OptionListProps<T>) {
   return (
     <ul role="list" aria-labelledby={labelledBy} className="border-t border-hairline">
-      {options.map((option, i) => (
+      {options.map((option) => (
         <li key={option.value}>
           <button
             type="button"
             aria-pressed={option.value === selected}
-            autoFocus={selected ? option.value === selected : i === 0}
             onClick={() => onSelect(option.value)}
-            className="flex w-full cursor-pointer items-center justify-between gap-4 border-b border-hairline py-4 text-left text-xl text-ink transition-colors duration-300 hover:border-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent aria-pressed:border-ink"
+            className="flex w-full cursor-pointer items-center justify-between gap-4 border-b border-hairline py-4 text-left text-xl text-ink transition-colors duration-300 hover:border-muted focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent aria-pressed:border-ink"
           >
             {option.label}
             {option.value === selected ? (

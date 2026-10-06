@@ -9,6 +9,7 @@ Decisions we've deferred on purpose. Check this at the start of each phase.
 ## Later (after the core flow works)
 
 - **Intro screen, navbar, other pages.** Visitors currently land straight on "When were you born?", and on phones the keyboard opens at once because the first field has focus. Design all screens together (doc or flowchart) before building any of them.
+- **Double-tap on the context questions.** Picking an option moves on at once, so a fast second tap can land on the next question while it slides in. If the phone walkthrough shows this happening, add a short pause after a tap that ignores further taps.
 - **Progress indicator** for the questionnaire. The steps are an ordered list in `Questionnaire.tsx`, so this is a small addition.
 
 ## Defaults to revisit in the design pass

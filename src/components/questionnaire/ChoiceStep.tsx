@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { OptionList } from "@/components/ui/OptionList";
 import { QuestionPrompt } from "@/components/ui/QuestionPrompt";
@@ -24,10 +24,16 @@ export function ChoiceStep<T extends string>({
   onContinue,
 }: ChoiceStepProps<T>) {
   const headingId = useId();
+  const headingRef = useRef<HTMLHeadingElement>(null);
+
+  // Not the first option: picking one advances at once, so a stray Enter would answer for the user.
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
 
   return (
     <div className="space-y-12">
-      <QuestionPrompt id={headingId} title={title}>
+      <QuestionPrompt id={headingId} headingRef={headingRef} title={title}>
         {description}
       </QuestionPrompt>
 
