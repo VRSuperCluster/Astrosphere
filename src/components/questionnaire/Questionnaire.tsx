@@ -1,17 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, type ReactElement } from "react";
 import { Button } from "@/components/ui/Button";
-import { QuestionPrompt } from "@/components/ui/QuestionPrompt";
 import { StepTransition } from "@/components/ui/StepTransition";
-import { describeBirthDate } from "@/lib/questionnaire/birth-date";
-import { describeBirthTime } from "@/lib/questionnaire/birth-time";
 import {
   CHANGE_STANCE_OPTIONS,
   LIFE_AREA_OPTIONS,
-  labelFor,
 } from "@/lib/questionnaire/context-questions";
-import { describePlace } from "@/lib/questionnaire/place";
+import { parseAnswers, saveAnswers, useSavedAnswersJson } from "@/lib/questionnaire/storage";
 import type { QuestionnaireAnswers } from "@/types/questionnaire";
 import { BirthDateStep } from "./BirthDateStep";
 import { BirthTimeStep } from "./BirthTimeStep";
@@ -26,18 +23,37 @@ const STEPS = [
   "firstName",
   "lifeArea",
   "changeStance",
-  "notBuiltYet",
 ] as const;
 type StepId = (typeof STEPS)[number];
 
+/** Pre-fills from answers saved earlier in this tab, e.g. on the way back from the chart. */
 export function Questionnaire() {
+  const saved = useSavedAnswersJson();
+  // The server can't see saved answers and renders empty steps; finding some in the browser
+  // changes the key, which restarts the steps with them.
+  return (
+    <QuestionnaireSteps
+      key={saved ? "saved" : "empty"}
+      initialAnswers={(saved && parseAnswers(saved)) || {}}
+    />
+  );
+}
+
+function QuestionnaireSteps({ initialAnswers }: { initialAnswers: QuestionnaireAnswers }) {
+  const router = useRouter();
   const [index, setIndex] = useState(0);
-  const [answers, setAnswers] = useState<QuestionnaireAnswers>({});
+  const [answers, setAnswers] = useState<QuestionnaireAnswers>(initialAnswers);
   const step = STEPS[index];
 
   function save(update: Partial<QuestionnaireAnswers>) {
-    setAnswers((prev) => ({ ...prev, ...update }));
-    setIndex((i) => Math.min(i + 1, STEPS.length - 1));
+    const next = { ...answers, ...update };
+    setAnswers(next);
+    if (index < STEPS.length - 1) {
+      setIndex(index + 1);
+      return;
+    }
+    saveAnswers(next);
+    router.push("/chart");
   }
 
   function renderStep(id: StepId): ReactElement {
@@ -90,8 +106,6 @@ export function Questionnaire() {
             onContinue={(changeStance) => save({ changeStance })}
           />
         );
-      case "notBuiltYet":
-        return <NotBuiltYetStep answers={answers} />;
     }
   }
 
@@ -107,29 +121,5 @@ export function Questionnaire() {
 
       <StepTransition key={step}>{renderStep(step)}</StepTransition>
     </div>
-  );
-}
-
-/** Temporary stand-in until the chart screen exists. */
-function NotBuiltYetStep({ answers }: { answers: QuestionnaireAnswers }) {
-  const saved = [
-    answers.birthDate ? describeBirthDate(answers.birthDate) : null,
-    answers.birthTime
-      ? answers.birthTime.known
-        ? describeBirthTime(answers.birthTime.time)
-        : "Time unknown."
-      : null,
-    answers.placeOfBirth ? `${describePlace(answers.placeOfBirth)}.` : null,
-    answers.firstName ? `${answers.firstName}.` : null,
-    answers.lifeArea ? `${labelFor(LIFE_AREA_OPTIONS, answers.lifeArea)}.` : null,
-    answers.changeStance
-      ? `${labelFor(CHANGE_STANCE_OPTIONS, answers.changeStance)}.`
-      : null,
-  ].filter(Boolean);
-
-  return (
-    <QuestionPrompt title="Your chart comes next.">
-      {`Saved: ${saved.join(" ")} This screen isn't built yet.`}
-    </QuestionPrompt>
   );
 }

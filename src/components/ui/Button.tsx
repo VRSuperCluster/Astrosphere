@@ -14,6 +14,11 @@ const variants: Record<ButtonVariant, string> = {
   quiet: "py-3 text-muted underline-offset-4 hover:text-ink hover:underline",
 };
 
+/** For links that should look like a button. */
+export function buttonClassName(variant: ButtonVariant = "primary"): string {
+  return `${base} ${variants[variant]}`;
+}
+
 export function Button({ variant = "primary", type = "button", ...props }: ButtonProps) {
-  return <button type={type} className={`${base} ${variants[variant]}`} {...props} />;
+  return <button type={type} className={buttonClassName(variant)} {...props} />;
 }
