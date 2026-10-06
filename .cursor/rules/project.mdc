@@ -1,0 +1,122 @@
+---
+description: Transit Calendar (Astroscope) — project rules, stack decisions, brand voice
+alwaysApply: true
+---
+
+# Transit Calendar — Project Rules
+
+## What this project is
+
+A web-based personal development tool that translates astrological transit data into psychologically grounded, actionable calendar entries. Astrology is the invisible engine. Psychology is the user-facing interface. The calendar is the delivery mechanism.
+
+Three-screen MVP: birth data questionnaire → chart summary → transit calendar ICS download.
+
+Full product spec: `docs/spec.md`. Read the relevant section when starting a new phase. Where the spec and the Decisions section below disagree, the Decisions section wins.
+
+## Decisions (resolved — do not reopen without asking)
+
+- **Framework:** Next.js App Router, TypeScript strict, `src/` directory, npm.
+- **Styling:** Tailwind CSS only (v4, tokens defined with `@theme` in `src/app/globals.css`). No CSS modules.
+- **Ephemeris:** `astronomy-engine` (MIT, pure JS, runs on Vercel serverless). Do NOT install `swisseph` or `sweph` (native addons, AGPL).
+  - All calls to `astronomy-engine` go through one adapter in `src/lib/astro/ephemeris.ts` exposing an `EphemerisProvider` interface, so the backend can be swapped for Swiss Ephemeris later without touching other code.
+  - Positions are tropical, geocentric ecliptic longitude of date.
+  - Ascendant and MC are computed in our own code from local sidereal time, latitude, and obliquity.
+  - House system: Whole Sign. Each house is one full sign, starting from the Ascendant's sign. The unknown-birth-time solar chart uses the same logic with the Sun's sign as house 1.
+  - Verify against astro.com for at least three known birth charts; planets should match within ~0.1°.
+- **Place of birth (geocoding):** Open-Meteo Geocoding API (`https://geocoding-api.open-meteo.com/v1/search`), no API key. Use its `latitude`, `longitude` and `timezone` (IANA) fields. Call it through a route handler (`src/app/api/places/route.ts`) so the provider can be swapped later; debounce autocomplete input on the client. Note: the free tier is for non-commercial use; revisit before any paid launch.
+- **Timezones:** `luxon`. Convert birth local time to UTC with `DateTime.fromObject({...}, { zone: <IANA zone from the geocoder> }).toUTC()`, never the server's or browser's zone. Handle DST edge cases explicitly:
+  - Nonexistent local time (spring-forward gap): detect by round-tripping back to local time and comparing; shift forward and keep a flag.
+  - Ambiguous local time (autumn fall-back): use the earlier occurrence and keep a flag.
+  - Unit-test both cases plus a historical date (pre-1980) in a zone whose rules have changed.
+- **AI:** `@anthropic-ai/sdk`, server-side only. Model name comes from `process.env.ANTHROPIC_MODEL` (default `claude-sonnet-5-5`), never hardcoded. Validate the model's JSON output with `zod` before use.
+- **Calendar output:** ICS file (RFC 5545), hand-written in `src/lib/calendar/`, no library. All-day events (`DTSTART;VALUE=DATE`), CRLF line endings, lines folded at 75 octets, commas/semicolons/backslashes/newlines escaped, a stable `UID` per event. Served with `Content-Type: text/calendar; charset=utf-8` and a `.ics` filename. Must import cleanly into Google Calendar and Apple Calendar.
+- **Email capture:** Buttondown API, called from a route handler (`src/app/api/subscribe/route.ts`) with `BUTTONDOWN_API_KEY` from env. Show a short consent line next to the field (EU/GDPR), written in brand voice. Do not store emails anywhere else.
+- **Fonts (proposed — pending design system pass):** `Cormorant Garamond` for display only (headlines, questionnaire prompts; never below ~20px), `Newsreader` for body, loaded via `next/font/google`.
+- **Palette (proposed — pending design system pass):** paper `#F5F0E8`, surface `#EDE6DA`, ink `#2B2622`, muted ink `#6B625A`, hairline `#D8CFC2`, accent (terracotta) `#A0644A`. Use only these tokens; never hardcode hex values in components, so the palette can be replaced in one place.
+
+## Brand voice (applies to all UI copy, microcopy, and loading states)
+
+Honest, warm, slightly confrontational. Like a therapist who skips the pleasantries. Assumes intelligence. Names the uncomfortable thing directly.
+
+- Never use astrological jargon in any user-facing text
+- Never use cosmic/mystical language ("the universe is telling you")
+- Never use passive hedging ("you may feel"). Use direct statements ("you will feel")
+- Never use generic positivity ("trust the process")
+- Write in second person
+- Astrology terms are allowed only in code, metadata, and internal comments
+
+## Visual design system
+
+- Serif typography — literary, not techy
+- Japanese-inspired minimalism: generous whitespace, warm paper tones, restraint
+- Palette: off-white and warm neutrals with a single muted accent (tokens above)
+- Reference: Kinfolk magazine meets a personal journal
+- Mobile-first responsive
+- The chart wheel SVG is clean and minimal, not the cluttered default astrology chart look
+
+## Code style and patterns
+
+- API routes (route handlers) handle all server-side logic: chart calculation, AI calls, geocoding, email capture
+- Keep components small and single-purpose
+- Astrology calculation logic lives only in `src/lib/astro/`
+- AI/prompt logic lives only in `src/lib/ai/`
+- ICS logic lives only in `src/lib/calendar/`
+- Type all chart data, transit objects, and API responses explicitly in `src/types/`
+- No `any` types
+- Never expose secrets (`ANTHROPIC_API_KEY`, `BUTTONDOWN_API_KEY`) to the client; no `NEXT_PUBLIC_` prefix on secrets
+
+## File structure
+
+```
+src/
+  app/              # pages and API route handlers
+    api/places/     # geocoding proxy (Open-Meteo)
+    api/subscribe/  # email capture (Buttondown)
+  components/
+    ui/             # generic UI (buttons, inputs, transitions)
+    chart/          # wheel, summary
+    questionnaire/  # form steps
+  lib/
+    astro/          # ephemeris adapter, chart calculation, timezone conversion, transit engine
+    ai/             # system prompt, Claude call, response parsing
+    calendar/       # ICS generation
+  types/            # shared TypeScript types
+docs/
+  spec.md           # product spec (reference, not always loaded)
+```
+
+## Key architectural decisions
+
+- The AI call is a SINGLE request returning both the chart personality summary AND all calendar entries as structured JSON
+- Chart data is a JSON object passed through the flow: form → calculation → AI → display + ICS
+- Unknown birth time defaults to a solar chart (sun on ascendant at noon) — handle gracefully in UI, skip house-based detail
+- Transit filtering: outer planets (Jupiter, Saturn, Uranus, Neptune, Pluto) to personal points (Sun, Moon, Mercury, Venus, Mars, Ascendant) only. Major aspects only (conjunction, opposition, square)
+- With unknown birth time, exclude the Ascendant from transit targets (it sits on the Sun, so its transits would duplicate the Sun's)
+- Email capture is a simple field before download — no account creation
+
+## What NOT to build
+
+Do not add or suggest any of these — they are out of MVP scope:
+- User accounts or authentication
+- Database or persistence beyond the session
+- Payment or premium tiers
+- Interactive chart explorer
+- Google Calendar API integration (ICS download only)
+- Content automation or social posting
+- Mobile app
+- Dating/synastry features
+
+## Error handling
+
+- AI API failures: retry once, then show a graceful fallback message
+- Geocoder failures or no results: let the user retry or rephrase; never block on it silently
+- Loading states during AI generation feel intentional ("Reading your chart..."), not broken
+- Cache AI responses briefly server-side so a page refresh doesn't re-trigger the API call
+
+## When in doubt
+
+- Simpler is better — this ships in 2–3 weeks
+- If it's not in the MVP column of the spec, it doesn't get built
+- The questionnaire feels calm and paced, not like a data entry form
+- Every piece of user-facing text sounds like the brand voice
+- Ask before adding any dependency not listed above
