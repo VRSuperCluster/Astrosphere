@@ -39,9 +39,15 @@ export function validateBirthDate(
     return { ok: false, error: "We need the day, the month and the full year." };
   }
 
-  const day = Number(input.day);
-  const month = Number(input.month);
-  const year = Number(input.year);
+  return checkBirthDate(
+    { year: Number(input.year), month: Number(input.month), day: Number(input.day) },
+    today,
+  );
+}
+
+/** The same rules for a date that arrives as numbers, e.g. in a request body. */
+export function checkBirthDate(date: BirthDate, today: BirthDate): BirthDateResult {
+  const { year, month, day } = date;
 
   if (month < 1 || month > 12) {
     return { ok: false, error: "There are twelve months. Check the month." };
@@ -77,6 +83,17 @@ function compareDates(a: BirthDate, b: BirthDate): number {
 
 export function localToday(now: Date = new Date()): BirthDate {
   return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
+}
+
+const FURTHEST_AHEAD_OFFSET_MS = 14 * 60 * 60 * 1000;
+
+/**
+ * The date in UTC+14, the furthest-ahead zone. The server doesn't know the
+ * visitor's zone, and no later date has begun anywhere yet.
+ */
+export function latestToday(now: Date = new Date()): BirthDate {
+  const ahead = new Date(now.getTime() + FURTHEST_AHEAD_OFFSET_MS);
+  return { year: ahead.getUTCFullYear(), month: ahead.getUTCMonth() + 1, day: ahead.getUTCDate() };
 }
 
 /** "14 June 1990 — a Thursday." */

@@ -97,3 +97,13 @@ export interface SolarChart extends ChartBase {
 }
 
 export type Chart = TimedChart | SolarChart;
+
+/** `POST /api/chart`, status 200. */
+export interface ChartResponse {
+  chart: Chart;
+}
+
+/** `POST /api/chart`, status 400 or 500. Never echoes the birth data. */
+export interface ChartErrorResponse {
+  error: string;
+}

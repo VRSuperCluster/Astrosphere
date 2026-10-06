@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   MIN_BIRTH_YEAR,
+  checkBirthDate,
   describeBirthDate,
   isComplete,
+  latestToday,
   localToday,
   toInput,
   validateBirthDate,
@@ -77,9 +79,25 @@ describe("validateBirthDate", () => {
   });
 });
 
+describe("checkBirthDate", () => {
+  it("applies the same rules to numbers", () => {
+    expect(checkBirthDate({ year: 1990, month: 6, day: 14 }, today).ok).toBe(true);
+    expect(checkBirthDate({ year: 1990, month: 2, day: 29 }, today).ok).toBe(false);
+    expect(checkBirthDate({ year: 1990, month: 13, day: 1 }, today).ok).toBe(false);
+    expect(checkBirthDate({ year: 2026, month: 10, day: 7 }, today).ok).toBe(false);
+  });
+});
+
 describe("localToday", () => {
   it("uses the local calendar date", () => {
     expect(localToday(new Date(2026, 9, 6, 23, 59))).toEqual(today);
+  });
+});
+
+describe("latestToday", () => {
+  it("is already tomorrow from 10:00 UTC", () => {
+    expect(latestToday(new Date("2026-10-06T09:59:59Z"))).toEqual(today);
+    expect(latestToday(new Date("2026-10-06T10:00:00Z"))).toEqual({ year: 2026, month: 10, day: 7 });
   });
 });
 
