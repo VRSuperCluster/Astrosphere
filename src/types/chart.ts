@@ -7,6 +7,22 @@ export type DstAdjustment =
   /** The clocks passed this time twice (fall back); the earlier one is used. */
   | "earlierOccurrence";
 
+/** Bodies the chart is built from. The Sun and Moon count as planets here. */
+export type Planet =
+  | "sun"
+  | "moon"
+  | "mercury"
+  | "venus"
+  | "mars"
+  | "jupiter"
+  | "saturn"
+  | "uranus"
+  | "neptune"
+  | "pluto";
+
+/** Ecliptic longitude in degrees, 0 ≤ λ < 360, for every planet. */
+export type PlanetLongitudes = Record<Planet, number>;
+
 /** The instant of birth, resolved from local time at the place of birth. */
 export interface BirthMoment {
   /** ISO 8601 in UTC, e.g. "1990-06-14T13:30:00.000Z". */
