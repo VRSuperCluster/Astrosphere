@@ -17,5 +17,6 @@ Decisions we've deferred on purpose. Check this at the start of each phase.
 - Dates are entered day, month, year.
 - Years before 1900 are rejected (`MIN_BIRTH_YEAR`).
 - Times use the 24-hour clock.
-- First names are capped at 40 characters (`MAX_FIRST_NAME_LENGTH`). The name step sits after the time step for now; the spec puts place of birth before it, so place goes in between when it's built.
+- First names are capped at 40 characters (`MAX_FIRST_NAME_LENGTH`).
+- Place names come back in English (`language=en`) and the list shows up to 8 matches.
 - The terracotta accent is only used for underlines and focus outlines: as text on paper it's about 4.2:1, below the WCAG AA 4.5:1 minimum.

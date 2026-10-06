@@ -1,3 +1,5 @@
+import type { Place } from "./places";
+
 /** A calendar date as the user entered it, with no time or zone attached. */
 export interface BirthDate {
   year: number;
@@ -34,6 +36,7 @@ export interface ChoiceOption<T extends string> {
 export interface QuestionnaireAnswers {
   birthDate?: BirthDate;
   birthTime?: BirthTimeAnswer;
+  placeOfBirth?: Place;
   /** Trimmed, inner whitespace collapsed. Used to personalise calendar entries. */
   firstName?: string;
   /** Undefined when skipped. */

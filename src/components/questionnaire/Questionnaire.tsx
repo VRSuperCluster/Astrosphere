@@ -11,15 +11,18 @@ import {
   LIFE_AREA_OPTIONS,
   labelFor,
 } from "@/lib/questionnaire/context-questions";
+import { describePlace } from "@/lib/questionnaire/place";
 import type { QuestionnaireAnswers } from "@/types/questionnaire";
 import { BirthDateStep } from "./BirthDateStep";
 import { BirthTimeStep } from "./BirthTimeStep";
 import { ChoiceStep } from "./ChoiceStep";
 import { FirstNameStep } from "./FirstNameStep";
+import { PlaceOfBirthStep } from "./PlaceOfBirthStep";
 
 const STEPS = [
   "birthDate",
   "birthTime",
+  "placeOfBirth",
   "firstName",
   "lifeArea",
   "changeStance",
@@ -51,6 +54,13 @@ export function Questionnaire() {
           <BirthTimeStep
             initial={answers.birthTime}
             onContinue={(birthTime) => save({ birthTime })}
+          />
+        );
+      case "placeOfBirth":
+        return (
+          <PlaceOfBirthStep
+            initial={answers.placeOfBirth}
+            onContinue={(placeOfBirth) => save({ placeOfBirth })}
           />
         );
       case "firstName":
@@ -100,7 +110,7 @@ export function Questionnaire() {
   );
 }
 
-/** Temporary stand-in until the place-of-birth step exists. */
+/** Temporary stand-in until the chart screen exists. */
 function NotBuiltYetStep({ answers }: { answers: QuestionnaireAnswers }) {
   const saved = [
     answers.birthDate ? describeBirthDate(answers.birthDate) : null,
@@ -109,6 +119,7 @@ function NotBuiltYetStep({ answers }: { answers: QuestionnaireAnswers }) {
         ? describeBirthTime(answers.birthTime.time)
         : "Time unknown."
       : null,
+    answers.placeOfBirth ? `${describePlace(answers.placeOfBirth)}.` : null,
     answers.firstName ? `${answers.firstName}.` : null,
     answers.lifeArea ? `${labelFor(LIFE_AREA_OPTIONS, answers.lifeArea)}.` : null,
     answers.changeStance
@@ -117,8 +128,8 @@ function NotBuiltYetStep({ answers }: { answers: QuestionnaireAnswers }) {
   ].filter(Boolean);
 
   return (
-    <QuestionPrompt title="Place of birth comes next.">
-      {`Saved: ${saved.join(" ")} This step isn't built yet.`}
+    <QuestionPrompt title="Your chart comes next.">
+      {`Saved: ${saved.join(" ")} This screen isn't built yet.`}
     </QuestionPrompt>
   );
 }
