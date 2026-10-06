@@ -22,6 +22,8 @@ export type BirthTimeAnswer = { known: true; time: BirthTime } | { known: false 
 export interface QuestionnaireAnswers {
   birthDate?: BirthDate;
   birthTime?: BirthTimeAnswer;
+  /** Trimmed, inner whitespace collapsed. Used to personalise calendar entries. */
+  firstName?: string;
 }
 
 /** Raw text from the three date inputs, before validation. */
@@ -43,4 +45,8 @@ export interface BirthTimeInput {
 
 export type BirthTimeResult =
   | { ok: true; value: BirthTime }
+  | { ok: false; error: string };
+
+export type FirstNameResult =
+  | { ok: true; value: string }
   | { ok: false; error: string };

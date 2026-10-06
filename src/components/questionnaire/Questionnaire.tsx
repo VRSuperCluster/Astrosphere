@@ -9,8 +9,9 @@ import { describeBirthTime } from "@/lib/questionnaire/birth-time";
 import type { QuestionnaireAnswers } from "@/types/questionnaire";
 import { BirthDateStep } from "./BirthDateStep";
 import { BirthTimeStep } from "./BirthTimeStep";
+import { FirstNameStep } from "./FirstNameStep";
 
-const STEPS = ["birthDate", "birthTime", "notBuiltYet"] as const;
+const STEPS = ["birthDate", "birthTime", "firstName", "notBuiltYet"] as const;
 type StepId = (typeof STEPS)[number];
 
 export function Questionnaire() {
@@ -37,6 +38,13 @@ export function Questionnaire() {
           <BirthTimeStep
             initial={answers.birthTime}
             onContinue={(birthTime) => save({ birthTime })}
+          />
+        );
+      case "firstName":
+        return (
+          <FirstNameStep
+            initial={answers.firstName}
+            onContinue={(firstName) => save({ firstName })}
           />
         );
       case "notBuiltYet":
@@ -68,6 +76,7 @@ function NotBuiltYetStep({ answers }: { answers: QuestionnaireAnswers }) {
         ? describeBirthTime(answers.birthTime.time)
         : "Time unknown."
       : null,
+    answers.firstName ? `${answers.firstName}.` : null,
   ].filter(Boolean);
 
   return (
