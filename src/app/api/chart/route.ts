@@ -53,6 +53,8 @@ export async function POST(request: Request) {
   try {
     return Response.json({ chart: calculateChart(input) } satisfies ChartResponse);
   } catch {
+    // The error itself stays out: astronomy-engine puts the instant (the birth time) in some messages.
+    console.error("Chart calculation failed");
     return errorResponse(500, "Chart calculation failed");
   }
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { calculateChart } from "@/lib/astro/chart";
 import type { ChartErrorResponse, ChartResponse } from "@/types/chart";
 import type { QuestionnaireAnswers } from "@/types/questionnaire";
@@ -93,13 +93,33 @@ describe("POST /api/chart", () => {
   });
 
   it("answers 500 without the birth data when the calculation throws", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.mocked(calculateChart).mockImplementationOnce(() => {
-      throw new Error("ephemeris failure");
+      throw new Error("failed near 1990-06-14T13:30:00.000Z");
     });
     const response = await post(ANSWERS);
     expect(response.status).toBe(500);
     expect(await response.json()).toEqual({
       error: "Chart calculation failed",
     } satisfies ChartErrorResponse);
+    expect(log).toHaveBeenCalledWith("Chart calculation failed");
+    log.mockRestore();
+  });
+});
+
+describe("POST /api/chart, the latest accepted date", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("is tomorrow in UTC once it is 10:00 UTC, because UTC+14 is already there", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-10-06T10:00:00Z"));
+
+    const tomorrow = await post({ ...ANSWERS, birthDate: { year: 2026, month: 10, day: 7 } });
+    expect(tomorrow.status).toBe(200);
+
+    const dayAfter = await post({ ...ANSWERS, birthDate: { year: 2026, month: 10, day: 8 } });
+    expect(dayAfter.status).toBe(400);
   });
 });
