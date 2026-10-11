@@ -9,9 +9,11 @@ alwaysApply: true
 
 A web-based personal development tool that translates astrological transit data into psychologically grounded, actionable calendar entries. Astrology is the invisible engine. Psychology is the user-facing interface. The calendar is the delivery mechanism.
 
-Three-screen MVP: birth data questionnaire → chart summary → transit calendar ICS download.
+Three-screen MVP: birth data questionnaire → chart page (wheel, short read, three pattern → rule cards) → transit calendar ICS download.
 
-Full product spec: `docs/spec.md`. Read the relevant section when starting a new phase. Where the spec and the Decisions section below disagree, the Decisions section wins.
+Full product spec: `docs/spec.md` (v0.3). Read the relevant section when starting a new phase. Where the spec and the Decisions section below disagree, the Decisions section wins.
+
+`docs/roadmap-v2.md` describes paid layers (natal reading, multi-year timing guide, Vedic layer, payments). It is context only. Never implement anything from it during the MVP; if a task seems to need it, stop and ask.
 
 ## Decisions (resolved — do not reopen without asking)
 
@@ -29,7 +31,13 @@ Full product spec: `docs/spec.md`. Read the relevant section when starting a new
   - Ambiguous local time (autumn fall-back): use the earlier occurrence and keep a flag.
   - Unit-test both cases plus a historical date (pre-1980) in a zone whose rules have changed.
 - **AI:** `@anthropic-ai/sdk`, server-side only. Model name comes from `process.env.ANTHROPIC_MODEL` (default `claude-sonnet-5-5`), never hardcoded. Validate the model's JSON output with `zod` before use.
-- **Calendar output:** ICS file (RFC 5545), hand-written in `src/lib/calendar/`, no library. All-day events (`DTSTART;VALUE=DATE`), CRLF line endings, lines folded at 75 octets, commas/semicolons/backslashes/newlines escaped, a stable `UID` per event. Served with `Content-Type: text/calendar; charset=utf-8` and a `.ics` filename. Must import cleanly into Google Calendar and Apple Calendar.
+  - Two calls, started in parallel from the chart page as soon as the chart exists: a **summary call** (read + exactly three pattern cards) and a **calendar call** (dated entries + twelve monthly cards). Schemas are in `docs/spec.md` section 6.
+  - The model never outputs dates. Calendar entries come back keyed by `transitId` and are joined to the transit engine's objects, which own the dates. Validation fails on missing, unknown or duplicate IDs, or a missing month.
+  - One prompt module per output type in `src/lib/ai/outputs/` (`summary.ts`, `calendar.ts`), sharing one voice block and the examples in `src/lib/ai/examples/`.
+  - The calendar route sets `export const maxDuration` (check the Vercel plan limit); generation can take a minute or more.
+- **Calendar output:** ICS file (RFC 5545), hand-written in `src/lib/calendar/`, no library. All-day events (`DTSTART;VALUE=DATE`), CRLF line endings, lines folded at 75 octets, commas/semicolons/backslashes/newlines escaped, a stable `UID` per event. Must import cleanly into Google Calendar and Apple Calendar.
+  - Built by a pure function from the engine's dated transits + the model's text + the monthly cards. It holds no secrets, so the client builds the file from the calendar call's response and downloads it as a Blob (`text/calendar; charset=utf-8`, `.ics` filename). No server-side storage between generation and download.
+  - Monthly context cards: one all-day event on the 1st of each month for twelve months (the first card goes on the download day if it's after the 1st). Never use multi-week or year-spanning events; they bury dated entries in month view.
 - **Email capture:** Buttondown API, called from a route handler (`src/app/api/subscribe/route.ts`) with `BUTTONDOWN_API_KEY` from env. Show a short consent line next to the field (EU/GDPR), written in brand voice. Do not store emails anywhere else.
 - **Fonts (proposed — pending design system pass):** `Cormorant Garamond` for display only (headlines, questionnaire prompts; never below ~20px), `Newsreader` for body, loaded via `next/font/google`.
 - **Palette (proposed — pending design system pass):** paper `#F5F0E8`, surface `#EDE6DA`, ink `#2B2622`, muted ink `#6B625A`, hairline `#D8CFC2`, accent (terracotta) `#A0644A`. Use only these tokens; never hardcode hex values in components, so the palette can be replaced in one place.
@@ -78,20 +86,28 @@ src/
     questionnaire/  # form steps
   lib/
     astro/          # ephemeris adapter, chart calculation, timezone conversion, transit engine
-    ai/             # system prompt, Claude call, response parsing
-    calendar/       # ICS generation
+    ai/             # voice block, Claude calls, response parsing
+      outputs/      # one prompt module per output type (summary.ts, calendar.ts)
+      examples/     # gold-standard examples shared by all prompts
+    calendar/       # ICS generation (pure functions)
   types/            # shared TypeScript types
 docs/
-  spec.md           # product spec (reference, not always loaded)
+  spec.md           # product spec v0.3 (reference, not always loaded)
+  roadmap-v2.md     # paid layers — context only, never implement during MVP
 ```
 
 ## Key architectural decisions
 
-- The AI call is a SINGLE request returning both the chart personality summary AND all calendar entries as structured JSON
-- Chart data is a JSON object passed through the flow: form → calculation → AI → display + ICS
-- Unknown birth time defaults to a solar chart (sun on ascendant at noon) — handle gracefully in UI, skip house-based detail
-- Transit filtering: outer planets (Jupiter, Saturn, Uranus, Neptune, Pluto) to personal points (Sun, Moon, Mercury, Venus, Mars, Ascendant) only. Major aspects only (conjunction, opposition, square)
-- With unknown birth time, exclude the Ascendant from transit targets (it sits on the Sun, so its transits would duplicate the Sun's)
+- Two parallel AI calls (summary, calendar), not one. The wheel renders immediately from the chart JSON with no AI wait; the summary fills in on the chart page; the calendar generates in the background while the person reads and enters their email. The download waits for it with an intentional state ("Still writing your year…").
+- The chart JSON is the single source of truth for natal data. Wheel, summary call, transit engine and calendar call all read from it; nothing recomputes or re-enters natal degrees. It stores raw ecliptic longitudes, not only signs and houses.
+- Chart data flows: form → calculation → chart JSON → (wheel) + (summary call) + (transit engine → calendar call → ICS)
+- Unknown birth time defaults to a solar chart (planets at noon, Sun's sign as house 1) — handle gracefully in UI and skip house-based detail entirely: transits carry `house: null`, prompts don't name life areas, and the wheel shows planets on a plain ring without house dividers
+- One naming scheme everywhere: `PlanetId` (sun…pluto), `PointId` = `PlanetId | 'asc' | 'mc'`, `AspectId`. The chart JSON, transit engine, summary `pointIds` and wheel all use these IDs. The chart JSON includes natal aspects.
+- Transit filtering: outer planets (Jupiter, Saturn, Uranus, Neptune, Pluto) to personal points (Sun, Moon, Mercury, Venus, Mars, Ascendant) only. Major aspects only (conjunction, opposition, square). Window: twelve months from download. Keep the window and planet list as parameters, not constants.
+- Exact hits are found by solving for the moment the separation crosses the aspect angle, not by daily sampling. Retrograde loops produce multiple hits of the same transit: each is its own entry, tagged with `pass` and `totalPasses`.
+- The engine also outputs, per month, the transits in orb and any outer planet stations; these feed the monthly cards.
+- With unknown birth time, exclude the Ascendant (it sits on the Sun) AND the Moon (a noon Moon can be ~6.5° off, shifting slow-transit dates by weeks or months) from dated transit targets
+- Pattern cards carry `pointIds`; the wheel emphasises those points and shows matching markers. No astrological glyphs in user-facing wheel labels.
 - Email capture is a simple field before download — no account creation
 
 ## What NOT to build
@@ -100,6 +116,9 @@ Do not add or suggest any of these — they are out of MVP scope:
 - User accounts or authentication
 - Database or persistence beyond the session
 - Payment or premium tiers
+- Paid documents: natal reading, multi-year timing guide, decision filter (see `docs/roadmap-v2.md`)
+- Any Vedic / sidereal calculation, nakshatras or dasha periods
+- Famous person chart matches
 - Interactive chart explorer
 - Google Calendar API integration (ICS download only)
 - Content automation or social posting
@@ -108,10 +127,11 @@ Do not add or suggest any of these — they are out of MVP scope:
 
 ## Error handling
 
-- AI API failures: retry once, then show a graceful fallback message
+- AI API failures (including failed zod validation): retry once, then show a graceful fallback message
+- If the calendar call fails, the chart page stays intact (wheel + summary); the download area offers a retry
 - Geocoder failures or no results: let the user retry or rephrase; never block on it silently
-- Loading states during AI generation feel intentional ("Reading your chart..."), not broken
-- Cache AI responses briefly server-side so a page refresh doesn't re-trigger the API call
+- Loading states during AI generation feel intentional ("Reading your chart...", "Still writing your year…"), not broken
+- No server-side cache (serverless memory isn't reliable and there's no database). Store both AI results in `sessionStorage`, keyed by a hash of birth data + context answers, wrapped in try/catch, so a refresh restores them instead of calling the API again
 
 ## When in doubt
 
