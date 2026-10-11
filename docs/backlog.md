@@ -30,3 +30,5 @@ Decisions we've deferred on purpose. Check this at the start of each phase.
 - Place names come back in English (`language=en`) and the list shows up to 8 matches.
 - The questionnaire is anchored to the top on every screen size, not vertically centred, so results and messages appearing under a field don't shift the page.
 - The terracotta accent is only used for underlines and focus outlines: as text on paper it's about 4.2:1, below the WCAG AA 4.5:1 minimum.
+- On the wheel, points the summary doesn't mention go from ink to muted ink. The difference is subtle; the planet look as a whole (tinted, illustrated, artwork) lives in `PlanetMark.tsx` and is decided here. Coloured planets would break the single-accent palette rule.
+- Natal aspect orbs (`src/lib/astro/aspects.ts`): conjunction and opposition 8°, square and trine 7°, sextile 5°. Only pairs with a personal point (Sun to Mars, Ascendant, MC). Revisit after the first prompt runs if the summary leans on loose aspects.

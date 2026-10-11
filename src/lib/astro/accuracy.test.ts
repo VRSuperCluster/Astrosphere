@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Planet, ZodiacSign } from "@/types/chart";
+import type { PlanetId, ZodiacSign } from "@/types/chart";
 import type { Place } from "@/types/places";
 import type { BirthDate, BirthTime } from "@/types/questionnaire";
 import { calculateChart } from "./chart";
@@ -21,7 +21,7 @@ interface ReferenceChart {
   time: BirthTime;
   /** Astro-Seek's coordinates, not our geocoder's, so both sides get the same input. */
   place: Pick<Place, "latitude" | "longitude" | "timezone">;
-  planets: Record<Planet, { at: Reading; house: number }>;
+  planets: Record<PlanetId, { at: Reading; house: number }>;
   ascendant: Reading;
   midheaven: Reading;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ChartInput, Planet, PlanetLongitudes } from "@/types/chart";
+import type { ChartInput, PlanetId, PlanetLongitudes } from "@/types/chart";
 import type { Place } from "@/types/places";
 import { calculateChart } from "./chart";
 import { PLANETS, type EphemerisProvider } from "./ephemeris";
@@ -37,7 +37,7 @@ const FIXED_LONGITUDES: PlanetLongitudes = {
 /** At the equator with sidereal time 0, 0° Aries culminates and 0° Cancer rises. */
 function fixedProvider(siderealTime = 0): EphemerisProvider {
   return {
-    longitude: (planet: Planet) => FIXED_LONGITUDES[planet],
+    longitude: (planet: PlanetId) => FIXED_LONGITUDES[planet],
     siderealTime: () => siderealTime,
     obliquity: () => 23.44,
   };
@@ -111,6 +111,12 @@ describe("calculateChart with a known birth time", () => {
     expect(chart.midheaven.longitude).toBeCloseTo(expectedMc, 9);
   });
 
+  it("includes aspects to the Ascendant and MC", () => {
+    const { aspects } = calculateChart(input, fixedProvider());
+    expect(aspects).toContainEqual({ points: ["moon", "asc"], aspect: "conjunction", orb: expect.closeTo(0, 9) });
+    expect(aspects).toContainEqual({ points: ["jupiter", "mc"], aspect: "conjunction", orb: expect.closeTo(0, 9) });
+  });
+
   it("converts the local birth time to UTC in the place's zone", () => {
     const chart = calculateChart({ ...input, place: LONDON }, fixedProvider());
     expect(chart.moment).toMatchObject({ utc: "1990-06-14T13:30:00.000Z", dstAdjustment: "none" });
@@ -137,6 +143,14 @@ describe("calculateChart without a birth time", () => {
 
   it("has no MC", () => {
     expect(calculateChart(input, fixedProvider())).not.toHaveProperty("midheaven");
+  });
+
+  it("leaves the Ascendant and the Moon out of the aspects", () => {
+    const { aspects } = calculateChart(input, fixedProvider());
+    expect(aspects.length).toBeGreaterThan(0);
+    const points = aspects.flatMap((a) => a.points);
+    expect(points).not.toContain("asc");
+    expect(points).not.toContain("moon");
   });
 });
 

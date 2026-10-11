@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { eclipticPosition } from "@/lib/astro/zodiac";
-import type { Chart, Planet, PlanetLongitudes, PlanetPlacement } from "@/types/chart";
+import type { Chart, PlanetId, PlanetLongitudes, PlanetPlacement } from "@/types/chart";
 import { CENTER, LANES, placePlanets, pointAt, signDividers } from "./wheel-geometry";
 
 const SPREAD_OUT: PlanetLongitudes = {
@@ -22,13 +22,14 @@ function chartWith(longitudes: PlanetLongitudes, rising = 100): Chart {
       planet,
       { ...eclipticPosition(longitude), house: 1 },
     ]),
-  ) as Record<Planet, PlanetPlacement>;
+  ) as Record<PlanetId, PlanetPlacement>;
   return {
     birthTimeKnown: false,
     moment: { utc: "1990-06-14T11:00:00.000Z", zone: "UTC", utcOffsetMinutes: 0, dstAdjustment: "none" },
     ascendant: eclipticPosition(rising),
     planets,
     houses: [],
+    aspects: [],
   };
 }
 

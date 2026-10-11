@@ -2,11 +2,13 @@ import type {
   Chart,
   ChartInput,
   EclipticPosition,
-  Planet,
+  PlanetId,
   PlanetLongitudes,
   PlanetPlacement,
+  PointId,
 } from "@/types/chart";
 import { ascendant, midheaven } from "./angles";
+import { natalAspects } from "./aspects";
 import { ephemeris, planetLongitudes, PLANETS, type EphemerisProvider } from "./ephemeris";
 import { birthTimeToUtc } from "./timezone";
 import { eclipticPosition, normalizeDegrees, SIGNS, signIndex } from "./zodiac";
@@ -20,6 +22,7 @@ export function calculateChart(
   const moment = birthTimeToUtc(date, time.known ? time.time : SOLAR_CHART_TIME, place.timezone);
   const instant = new Date(moment.utc);
   const longitudes = planetLongitudes(instant, provider);
+  const planetPoints = PLANETS.map((planet): [PointId, number] => [planet, longitudes[planet]]);
 
   if (!time.known) {
     const sun = eclipticPosition(longitudes.sun);
@@ -28,6 +31,7 @@ export function calculateChart(
       moment,
       ascendant: sun,
       ...wholeSignHouses(sun, longitudes),
+      aspects: natalAspects(planetPoints.filter(([point]) => point !== "moon")),
     };
   }
 
@@ -35,13 +39,15 @@ export function calculateChart(
   const localSiderealTime = normalizeDegrees(provider.siderealTime(instant) + place.longitude);
   const obliquity = provider.obliquity(instant);
   const asc = eclipticPosition(ascendant(localSiderealTime, place.latitude, obliquity));
+  const mc = eclipticPosition(midheaven(localSiderealTime, obliquity));
 
   return {
     birthTimeKnown: true,
     moment,
     ascendant: asc,
-    midheaven: eclipticPosition(midheaven(localSiderealTime, obliquity)),
+    midheaven: mc,
     ...wholeSignHouses(asc, longitudes),
+    aspects: natalAspects([...planetPoints, ["asc", asc.longitude], ["mc", mc.longitude]]),
   };
 }
 
@@ -53,11 +59,11 @@ function wholeSignHouses(
   const firstIndex = SIGNS.indexOf(first.sign);
   const houses = SIGNS.map((_, i) => SIGNS[(firstIndex + i) % 12]);
   const planets = Object.fromEntries(
-    PLANETS.map((planet): [Planet, PlanetPlacement] => {
+    PLANETS.map((planet): [PlanetId, PlanetPlacement] => {
       const position = eclipticPosition(longitudes[planet]);
       const house = ((signIndex(position.longitude) - firstIndex + 12) % 12) + 1;
       return [planet, { ...position, house }];
     }),
-  ) as Record<Planet, PlanetPlacement>;
+  ) as Record<PlanetId, PlanetPlacement>;
   return { houses, planets };
 }

@@ -1,5 +1,5 @@
 import { Body, e_tilt, Ecliptic, GeoVector, MakeTime, SiderealTime } from "astronomy-engine";
-import type { Planet, PlanetLongitudes } from "@/types/chart";
+import type { PlanetId, PlanetLongitudes } from "@/types/chart";
 
 /**
  * The only way the rest of the app reads astronomical data, so the backend
@@ -10,7 +10,7 @@ export interface EphemerisProvider {
    * Apparent geocentric ecliptic longitude on the true ecliptic and equinox
    * of date (tropical), in degrees, 0 ≤ λ < 360.
    */
-  longitude(planet: Planet, instant: Date): number;
+  longitude(planet: PlanetId, instant: Date): number;
   /** Greenwich apparent sidereal time, in degrees, 0 ≤ θ < 360. */
   siderealTime(instant: Date): number;
   /** True obliquity of the ecliptic (the Earth's axial tilt of date), in degrees. */
@@ -18,7 +18,7 @@ export interface EphemerisProvider {
 }
 
 /** Traditional order: lights, then planets outward from the Sun. */
-export const PLANETS: readonly Planet[] = [
+export const PLANETS: readonly PlanetId[] = [
   "sun",
   "moon",
   "mercury",
@@ -31,7 +31,7 @@ export const PLANETS: readonly Planet[] = [
   "pluto",
 ];
 
-const BODIES: Record<Planet, Body> = {
+const BODIES: Record<PlanetId, Body> = {
   sun: Body.Sun,
   moon: Body.Moon,
   mercury: Body.Mercury,

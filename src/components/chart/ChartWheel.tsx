@@ -1,4 +1,5 @@
-import type { Chart, Planet } from "@/types/chart";
+import type { Chart, PointId } from "@/types/chart";
+import { PlanetMark } from "./PlanetMark";
 import {
   CENTER,
   INNER_RADIUS,
@@ -10,13 +11,19 @@ import {
   type Segment,
 } from "./wheel-geometry";
 
-const LIGHTS: readonly Planet[] = ["sun", "moon"];
-
-/** Dots only, no symbols or labels: the drawing is a shape to recognise, not a chart to decode. */
-export function ChartWheel({ chart }: { chart: Chart }) {
+/**
+ * Dots only, no symbols or labels: the drawing is a shape to recognise, not a chart to decode.
+ * With `emphasis`, those points stay in ink and everything else goes quiet.
+ * Without a birth time there are no houses to divide, so the planets sit on a plain ring.
+ */
+export function ChartWheel({ chart, emphasis = [] }: { chart: Chart; emphasis?: readonly PointId[] }) {
   const rising = chart.ascendant.longitude;
-  const axes = chart.birthTimeKnown
-    ? [axis(rising, rising), axis(chart.midheaven.longitude, rising)]
+  const quiet = (point: PointId) => emphasis.length > 0 && !emphasis.includes(point);
+  const axes: { point: PointId; segment: Segment }[] = chart.birthTimeKnown
+    ? [
+        { point: "asc", segment: axis(rising, rising) },
+        { point: "mc", segment: axis(chart.midheaven.longitude, rising) },
+      ]
     : [];
 
   return (
@@ -29,22 +36,22 @@ export function ChartWheel({ chart }: { chart: Chart }) {
       <circle cx={CENTER} cy={CENTER} r={OUTER_RADIUS} strokeWidth={1} className="fill-none stroke-muted" />
       <circle cx={CENTER} cy={CENTER} r={INNER_RADIUS} strokeWidth={0.75} className="fill-none stroke-muted" />
 
-      {signDividers(rising).map((segment, i) => (
-        <Line key={i} segment={segment} strokeWidth={0.75} className="stroke-hairline" />
-      ))}
-      {axes.map((segment, i) => (
-        <Line key={i} segment={segment} strokeWidth={0.75} className="stroke-ink" />
+      {chart.birthTimeKnown
+        ? signDividers(rising).map((segment, i) => (
+            <Line key={i} segment={segment} strokeWidth={0.75} className="stroke-hairline" />
+          ))
+        : null}
+      {axes.map(({ point, segment }) => (
+        <Line
+          key={point}
+          segment={segment}
+          strokeWidth={0.75}
+          className={`${quiet(point) ? "stroke-muted" : "stroke-ink"} transition-colors duration-700`}
+        />
       ))}
 
       {placePlanets(chart).map(({ planet, point }) => (
-        <circle
-          key={planet}
-          cx={point.x}
-          cy={point.y}
-          r={LIGHTS.includes(planet) ? 5 : 3.5}
-          strokeWidth={1.25}
-          className={planet === "moon" ? "fill-paper stroke-ink" : "fill-ink stroke-ink"}
-        />
+        <PlanetMark key={planet} planet={planet} at={point} quiet={quiet(planet)} />
       ))}
     </svg>
   );

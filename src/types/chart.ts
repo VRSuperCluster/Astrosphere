@@ -18,7 +18,7 @@ export type DstAdjustment =
   | "earlierOccurrence";
 
 /** Bodies the chart is built from. The Sun and Moon count as planets here. */
-export type Planet =
+export type PlanetId =
   | "sun"
   | "moon"
   | "mercury"
@@ -30,8 +30,17 @@ export type Planet =
   | "neptune"
   | "pluto";
 
+/** The Ascendant and the Midheaven. */
+export type AngleId = "asc" | "mc";
+
+/** Anything an aspect, a transit or a pattern card can refer to. Same IDs everywhere. */
+export type PointId = PlanetId | AngleId;
+
+/** Natal aspects use all five; transits use only conjunction, square and opposition. */
+export type AspectId = "conjunction" | "sextile" | "square" | "trine" | "opposition";
+
 /** Ecliptic longitude in degrees, 0 ≤ λ < 360, for every planet. */
-export type PlanetLongitudes = Record<Planet, number>;
+export type PlanetLongitudes = Record<PlanetId, number>;
 
 /** The instant of birth, resolved from local time at the place of birth. */
 export interface BirthMoment {
@@ -72,12 +81,22 @@ export interface PlanetPlacement extends EclipticPosition {
   house: number;
 }
 
+export interface NatalAspect {
+  /** In chart order: planets Sun to Pluto, then `asc`, then `mc`. */
+  points: [PointId, PointId];
+  aspect: AspectId;
+  /** Degrees from exact. */
+  orb: number;
+}
+
 interface ChartBase {
   /** For an unknown birth time, local noon on the birth date. */
   moment: BirthMoment;
-  planets: Record<Planet, PlanetPlacement>;
+  planets: Record<PlanetId, PlanetPlacement>;
   /** Whole Sign: the sign of each house, from house 1 to house 12. */
   houses: ZodiacSign[];
+  /** Every aspect with at least one of Sun, Moon, Mercury, Venus, Mars, Ascendant or MC; tightest first. */
+  aspects: NatalAspect[];
 }
 
 export interface TimedChart extends ChartBase {
@@ -89,6 +108,8 @@ export interface TimedChart extends ChartBase {
 /**
  * Cast without a birth time: the Sun stands in for the Ascendant, so house 1
  * is the Sun's sign. House-based detail and the Ascendant's transits are skipped.
+ * `aspects` leaves out the Ascendant (it is the Sun) and the Moon (at noon it
+ * can be about 6.5° from where it really was).
  */
 export interface SolarChart extends ChartBase {
   birthTimeKnown: false;

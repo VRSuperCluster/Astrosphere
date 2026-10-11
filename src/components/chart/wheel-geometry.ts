@@ -1,5 +1,5 @@
-import { normalizeDegrees } from "@/lib/astro/zodiac";
-import type { Chart, Planet } from "@/types/chart";
+import { separation } from "@/lib/astro/aspects";
+import type { Chart, PlanetId } from "@/types/chart";
 
 export const WHEEL_SIZE = 320;
 export const CENTER = WHEEL_SIZE / 2;
@@ -21,7 +21,7 @@ export interface Segment {
 }
 
 export interface PlacedPlanet {
-  planet: Planet;
+  planet: PlanetId;
   radius: number;
   point: Point;
 }
@@ -50,23 +50,17 @@ export function axis(longitude: number, rising: number): Segment {
 
 export function placePlanets(chart: Chart): PlacedPlanet[] {
   const rising = chart.ascendant.longitude;
-  const byLongitude = (Object.keys(chart.planets) as Planet[])
+  const byLongitude = (Object.keys(chart.planets) as PlanetId[])
     .map((planet) => ({ planet, longitude: chart.planets[planet].longitude }))
     .sort((a, b) => a.longitude - b.longitude);
 
   const occupied: number[][] = LANES.map(() => []);
   return byLongitude.map(({ planet, longitude }) => {
     const free = occupied.findIndex((lane) =>
-      lane.every((other) => arc(other, longitude) >= MIN_SEPARATION),
+      lane.every((other) => separation(other, longitude) >= MIN_SEPARATION),
     );
     const lane = free === -1 ? 0 : free;
     occupied[lane].push(longitude);
     return { planet, radius: LANES[lane], point: pointAt(longitude, rising, LANES[lane]) };
   });
-}
-
-/** Shortest distance around the circle, in degrees. */
-function arc(a: number, b: number): number {
-  const d = normalizeDegrees(a - b);
-  return Math.min(d, 360 - d);
 }

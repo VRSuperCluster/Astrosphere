@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Planet } from "@/types/chart";
+import type { PlanetId } from "@/types/chart";
 import { astronomyEngine, PLANETS, planetLongitudes, type EphemerisProvider } from "./ephemeris";
 
 /** Signed difference a − b in degrees, in (−180, 180], so 359.99 vs 0.01 is 0.02 apart. */
@@ -23,7 +23,7 @@ const INSTANTS = [
  * longitude on the ecliptic of date, with light time and aberration.
  * Columns follow INSTANTS.
  */
-const HORIZONS: Record<Planet, readonly [number, number, number, number]> = {
+const HORIZONS: Record<PlanetId, readonly [number, number, number, number]> = {
   sun: [280.4345916, 354.0887496, 83.2340888, 192.7601479],
   moon: [227.2760912, 315.1940729, 332.9822875, 134.5673154],
   mercury: [278.4283507, 342.4473364, 64.102196, 217.0206839],
