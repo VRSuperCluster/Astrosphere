@@ -168,7 +168,7 @@ Example:
 - **Title:** Your patience with half-truths runs out today
 - **Description:** Something you've been tolerating in a relationship or at work is going to feel suddenly intolerable. This isn't impulsive — you've been building toward this clarity for weeks. Follow the frustration. It's telling you where your standards actually are.
 
-**Repeated passes.** Slow planets often make the same aspect two or three times in a year because of retrograde motion. Each exact hit is its own dated entry, and the engine tags it with its pass number and total passes. The prompt uses this: the first pass introduces the theme, a middle pass revisits it ("this is back, and it's asking the question again"), the final pass closes it ("last time this comes up for a while — decide").
+**Repeated passes.** Slow planets often make the same aspect two or three times in a year because of retrograde motion. Each exact hit is its own dated entry, and the engine tags it with its pass number and total passes. Both count the whole run, not just the window: a run is the consecutive exact hits of one transiting planet to one natal point at one exact angle, and it can start before the window or end after it. Only hits inside the window become entries, but a hit whose earlier passes came last year is still "3 of 3", and one whose last pass falls after the window is "2 of 3", so the labels stay true. The prompt uses this: the first pass introduces the theme, a middle pass revisits it ("this is back, and it's asking the question again"), the final pass closes it ("last time this comes up for a while — decide").
 
 **2. MONTHLY CONTEXT CARDS**
 
@@ -244,13 +244,15 @@ A function that takes the chart JSON and finds every exact hit in the next twelv
   aspect: AspectId;      // conjunction | opposition | square
   house: number | null;  // Whole Sign house of the natal point; null when birth time is unknown
   pass: number;          // 1-based
-  totalPasses: number;   // passes of this same transit within the window
+  totalPasses: number;   // passes in the whole run, including any outside the window
 }
 ```
 
 It also produces, per month, the list of transits in orb and any outer planet stations. Those feed the monthly cards.
 
 Exact hits are found by searching for the moment the angular separation crosses the exact aspect angle, not by sampling daily and picking the closest day. Retrograde motion produces multiple crossings; each is one hit.
+
+A run is found by searching outward from each edge of the window until the transiting planet is more than 12° from exact. Every crossing in that stretch belongs to the run. (Jupiter's retrograde loop reaches about 10°, so a tighter range could split a Jupiter run; within one orbit a planet passes a given degree only once, so a wider range can't merge two runs.) The two squares, at +90° and −90°, are separate runs.
 
 Verify the engine against Astro-Seek or astro.com transit listings for at least two charts before writing prompts against its output.
 

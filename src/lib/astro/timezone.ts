@@ -36,6 +36,13 @@ export function birthTimeToUtc(date: BirthDate, time: BirthTime, zone: string): 
   return toMoment(local, zone, "none");
 }
 
+/** YYYY-MM-DD of `time` (milliseconds since the epoch) on the wall calendar in `zone`. */
+export function localDate(time: number, zone: string): string {
+  const date = DateTime.fromMillis(time, { zone }).toISODate();
+  if (date === null) throw new Error(`Cannot read a date in zone "${zone}"`);
+  return date;
+}
+
 function matchesWallClock(dt: DateTime, date: BirthDate, time: BirthTime): boolean {
   return (
     dt.year === date.year &&

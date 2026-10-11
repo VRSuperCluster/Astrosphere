@@ -71,6 +71,24 @@ export const astronomyEngine: EphemerisProvider = {
 
 export const ephemeris: EphemerisProvider = astronomyEngine;
 
+/** Computes each planet's longitude at each instant once, for searches that keep revisiting the same instants. */
+export function memoized(provider: EphemerisProvider): EphemerisProvider {
+  const longitudes = new Map<string, number>();
+  return {
+    longitude(planet, instant) {
+      const key = `${planet}@${instant.getTime()}`;
+      let value = longitudes.get(key);
+      if (value === undefined) {
+        value = provider.longitude(planet, instant);
+        longitudes.set(key, value);
+      }
+      return value;
+    },
+    siderealTime: (instant) => provider.siderealTime(instant),
+    obliquity: (instant) => provider.obliquity(instant),
+  };
+}
+
 export function planetLongitudes(
   instant: Date,
   provider: EphemerisProvider = ephemeris,

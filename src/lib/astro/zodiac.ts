@@ -21,6 +21,12 @@ export function normalizeDegrees(degrees: number): number {
   return ((degrees % 360) + 360) % 360;
 }
 
+/** Any angle in degrees to −180 < x ≤ 180: how far ahead (positive) or behind. */
+export function signedDegrees(degrees: number): number {
+  const normalized = normalizeDegrees(degrees);
+  return normalized > 180 ? normalized - 360 : normalized;
+}
+
 export function signIndex(longitude: number): number {
   return Math.floor(normalizeDegrees(longitude) / 30);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { eclipticPosition, normalizeDegrees } from "./zodiac";
+import { eclipticPosition, normalizeDegrees, signedDegrees } from "./zodiac";
 
 describe("normalizeDegrees", () => {
   it.each([
@@ -15,6 +15,21 @@ describe("normalizeDegrees", () => {
 
   it("never returns 360", () => {
     expect(normalizeDegrees(-1e-15)).toBeLessThan(360);
+  });
+});
+
+describe("signedDegrees", () => {
+  it.each([
+    [0, 0],
+    [10, 10],
+    [180, 180],
+    [181, -179],
+    [350, -10],
+    [-10, -10],
+    [-180, 180],
+    [540, 180],
+  ])("%d → %d", (input, expected) => {
+    expect(signedDegrees(input)).toBeCloseTo(expected, 12);
   });
 });
 
