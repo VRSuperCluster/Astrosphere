@@ -26,7 +26,12 @@ export function ChartSummary({ result, onRetry }: { result: CachedResult<Summary
           <ol className="space-y-8">
             {result.data.patterns.map((card, i) => (
               <li key={i} className="space-y-3 border-t border-hairline pt-6">
-                <p className="text-lg text-pretty">{card.pattern}</p>
+                <p className="text-lg text-pretty">
+                  <span className="mr-2 text-muted" aria-hidden="true">
+                    {i + 1}.
+                  </span>
+                  {card.pattern}
+                </p>
                 <p className="text-lg text-pretty">
                   <span className="mr-2 text-muted">What to do:</span>
                   {card.rule}

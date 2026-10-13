@@ -131,7 +131,7 @@ After submission, the user lands on the chart page. This is not a chart explorer
 
 1. The chart is computed in code and the wheel renders immediately. No AI wait for the wheel.
 2. Two AI calls start in parallel as soon as the chart exists:
-   - **Summary call:** the smaller of the two, about 20 seconds (the model thinks before answering). Fills the read and the pattern cards on this page.
+   - **Summary call:** the smaller of the two. Typically 17–25 seconds, about 50 with a repair turn, because the model thinks before answering. Fills the read and the pattern cards on this page.
    - **Calendar call:** larger and slower. Runs in the background while the person reads the summary and enters their email.
 3. By the time they reach the download, the calendar is usually ready. If not, the download area shows a calm, intentional waiting state ("Still writing your year…") and becomes active when it is.
 
@@ -294,7 +294,7 @@ The model never outputs dates. Entries are joined back to the engine's transit o
 
 One prompt module per output type, sharing a common voice block and the gold-standard examples in `src/lib/ai/examples/`. Future paid documents are added as new modules next to these, not by growing these two.
 
-**Route timing.** The model thinks before it answers, and a failed validation costs a second turn, so both routes set `export const maxDuration`. The summary takes about 20 seconds; its route allows 60, enough for one repair turn. The calendar call can take a minute or more. Set its limit against the current Vercel plan's function duration limit, including a repair turn.
+**Route timing.** The model thinks before it answers, and a failed validation costs a second turn, so both routes set `export const maxDuration`. Thinking stays on for both calls. The summary typically takes 17–25 seconds, and about 50 with a repair turn; its route allows 120. The calendar route allows 300, which covers one call plus one repair on Pro with Fluid compute.
 
 **Refresh and caching.** With no database and serverless functions, server memory is not a reliable cache. Store both AI results in `sessionStorage`, keyed by a hash of the birth data and context answers (wrapped in try/catch). A refresh restores them instead of calling the API again.
 

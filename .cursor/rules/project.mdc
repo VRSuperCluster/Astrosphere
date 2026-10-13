@@ -34,7 +34,9 @@ Full product spec: `docs/spec.md` (v0.3). Read the relevant section when startin
   - Two calls, started in parallel from the chart page as soon as the chart exists: a **summary call** (read + exactly three pattern cards) and a **calendar call** (dated entries + twelve monthly cards). Schemas are in `docs/spec.md` section 6.
   - The model never outputs dates. Calendar entries come back keyed by `transitId` and are joined to the transit engine's objects, which own the dates. Validation fails on missing, unknown or duplicate IDs, or a missing month.
   - One prompt module per output type in `src/lib/ai/outputs/` (`summary.ts`, `calendar.ts`), sharing one voice block and the examples in `src/lib/ai/examples/`.
-  - The calendar route sets `export const maxDuration` (check the Vercel plan limit); generation can take a minute or more.
+  - Thinking stays on for both calls. Do not send `thinking: { type: "between_tools" }`.
+  - The summary route sets `export const maxDuration` to 120. A typical summary is 17–25 seconds; a repair turn is about 50.
+  - The calendar route sets `export const maxDuration` to 300 (Pro, Fluid compute). One calendar call, plus its repair turn. Generation can take a minute or more.
 - **Calendar output:** ICS file (RFC 5545), hand-written in `src/lib/calendar/`, no library. All-day events (`DTSTART;VALUE=DATE`), CRLF line endings, lines folded at 75 octets, commas/semicolons/backslashes/newlines escaped, a stable `UID` per event. Must import cleanly into Google Calendar and Apple Calendar.
   - Built by a pure function from the engine's dated transits + the model's text + the monthly cards. It holds no secrets, so the client builds the file from the calendar call's response and downloads it as a Blob (`text/calendar; charset=utf-8`, `.ics` filename). No server-side storage between generation and download.
   - Monthly context cards: one all-day event on the 1st of each month for twelve months (the first card goes on the download day if it's after the 1st). Never use multi-week or year-spanning events; they bury dated entries in month view.

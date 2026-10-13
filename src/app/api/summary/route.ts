@@ -7,8 +7,8 @@ import { CHANGE_STANCE_OPTIONS, LIFE_AREA_OPTIONS } from "@/lib/questionnaire/co
 import { MAX_FIRST_NAME_LENGTH, normalizeFirstName } from "@/lib/questionnaire/first-name";
 import type { SummaryErrorResponse, SummaryResponse } from "@/types/summary";
 
-/** One answer takes about 20 seconds with thinking; a repair turn doubles that. */
-export const maxDuration = 60;
+/** Typical answer is 17–25s with thinking. A repair turn is about 50s. */
+export const maxDuration = 120;
 
 const values = <T extends string>(options: readonly { value: T }[]) =>
   options.map((option) => option.value) as [T, ...T[]];

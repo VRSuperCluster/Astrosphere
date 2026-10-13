@@ -69,6 +69,28 @@ Do A, then the two checks in B before designing the calendar call: they decide i
    - An estimate to check against: the summary ran at about 100 output tokens per second. A calendar answer of 4–7k tokens plus thinking would take 60–120 seconds, and a repair turn doubles that.
    - If one calendar call plus one repair turn fits, keep one call. If not, split it in two: dated entries, and monthly cards. Keep the repair turn either way.
    - A split reopens a resolved Decision: `project.mdc` and spec section 6 (including its schemas and the "two calls per user" cost line) describe one calendar call. Update both if it splits. Each call then validates its own part: the entries call checks for missing, unknown or duplicate `transitId`s, and the cards call checks for missing months.
+- **Done** (checks 3 and 4). Thinking stays on for both calls. The summary route allows 120s; the calendar route will allow 300s.
+  - **Thinking.** `claude-sonnet-5-5` rejects `thinking: { type: "disabled" }`. The API says to send `{ type: "between_tools" }` instead. That turns pre-response thinking off (0 thinking tokens). `output_config.effort: "low"` also thinks 0 tokens.
+  - Three fixtures, one pass each:
+
+    | Setting | Time | Output tokens | Thinking | First try |
+    | --- | --- | --- | --- | --- |
+    | Default | 17–25s | 1.7–2.5k | 1.1–1.9k | 3/3 |
+    | `between_tools` | 7–8s | ~650 | 0 | 3/3 |
+    | `effort: low` | 7–13s | ~600, or 1.2k with a repair | 0 | 2/3 |
+
+  - The visible writing looked close on these three. That sample is not a quality test: the comparison was not blind, and three charts cannot decide it.
+  - **Decision:** keep thinking on for both the summary call and the calendar call. Do not send `between_tools`. Low effort is out: it was flatter, and one chart needed a repair. A real comparison waits for the blind 20-fixture run in section E.
+  - **Duration.** Hobby is non-commercial personal use only ([fair use](https://vercel.com/docs/limits/fair-use-guidelines)), so this product designs for Pro. A new project gets Fluid compute by default.
+
+    | | Default | Maximum |
+    | --- | --- | --- |
+    | Hobby, Fluid | 300s | 300s |
+    | Pro, Fluid | 300s | 800s (1800s extended, beta) |
+    | Hobby, no Fluid (legacy) | 10s | 60s |
+    | Pro, no Fluid (legacy) | 15s | 300s |
+
+  - One calendar call plus one repair is estimated at 120–240s. That fits Pro with Fluid. **Keep one calendar call.** The calendar route's `maxDuration` is 300. The summary route's is 120 (a repair is about 50s, and 60s left no margin). Do not split.
 
 ### C. Chart page: functional gaps (no visual polish)
 
@@ -77,12 +99,13 @@ Do A, then the two checks in B before designing the calendar call: they decide i
    - "Lines" today means the 12 sign dividers and the two axes. There are no aspect lines. Adding them would be a new visual element and a design-pass decision, so not here.
 6. **Card-to-wheel link.** The spec says each pattern card links to its points with matching markers. Right now the emphasis is barely visible and the cards have no markers. Build the link functionally, with minimal styling; the look comes in the design pass.
    - One point can belong to more than one card (the live runs had `sun` and `mercury` in two), so a point must be able to carry several markers, for example numbered 1–3.
+- **Done.** The wheel is grouped: `wheel-rings` (`wheel-ring`, `wheel-ring-inner`), `wheel-dividers` (`wheel-divider-1` is 0° Aries), `wheel-axes` (`wheel-axis-asc`, `wheel-axis-mc`), `wheel-points` (`wheel-point-sun`). A chart without a birth time has no dividers and no axes. Each card shows its number, and the same number sits outside the ring on that card's points (`wheel-marker-sun-1`). Where points cluster, those numbers float away from their dots. That ambiguity is a design-pass problem (section F), not a reason to keep moving the numbers.
 
 ### D. Remaining functional flow
 
 7. **Calendar call.**
    - It starts in parallel with the summary as soon as the chart exists and runs in the background.
-   - It reuses `callClaude`, joins entries by `transitId`, and sets `maxDuration` from check 4.
+   - It reuses `callClaude` with thinking left on. Do not send `between_tools`. It joins entries by `transitId`, and its `maxDuration` is 300.
    - It's cached in `sessionStorage` with the same key pattern, plus the window start date. The transits depend on today's date, so a key without it would serve yesterday's calendar after midnight.
    - The route returns the engine's dated transits joined with the model's entries, plus the monthly cards. The browser builds the `.ics` from that, so it needs the dates, not only the text.
    - The first monthly card uses the generation date, not the download date. Downloads can come from the cache later than generation, and this keeps the file consistent with the cached entries.
@@ -110,16 +133,18 @@ Do A, then the two checks in B before designing the calendar call: they decide i
   - a chart with few transit hits
   - every option of both context questions at least once
   - Public charts or made-up data only.
+- **Blind comparison.** Once those 20 fixtures exist, run the summary on each one twice: default thinking, and `thinking: { type: "between_tools" }`. Shuffle the two outputs for each fixture and hide which setting wrote which, until the owner has rated them. Thinking stays on in the product until that rating says otherwise. The three-fixture sample in section B does not decide it.
 
 ### F. Design pass (after D is done): all three screens together
 
 - One coherent pass across the questionnaire, the chart page (including the email and download area) and the loading states.
 - **Loading animation:** GSAP with `@gsap/react` (`useGSAP` for cleanup). Approved as a dependency when this work starts; add it to the Decisions section in `project.mdc` then.
   - Animate the real wheel drawing itself (ring, then points, then lines), not a spinner.
-  - Design for about 20 seconds: slow progression, a few staged brand-voice copy lines, then a calm idle state if the call runs long.
+  - Design for 17–25 seconds as the typical wait, and about 50 seconds when the repair turn runs: slow progression, a few staged brand-voice copy lines, then a calm idle state through the long case.
   - No fake progress: no percentages, no "almost there".
   - When the summary arrives mid-animation, resolve quickly into the emphasis fade-in. Never make the person wait for the animation to finish.
   - `prefers-reduced-motion`: a static, settled wheel plus the copy lines.
+- **Wheel markers.** The numbers sit outside the ring. Where points cluster, they float away from their dots, so it is unclear which number belongs to which point. Solve that here. Leave the positions alone until this pass.
 
 ### Open question (don't build)
 

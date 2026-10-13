@@ -1,7 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { eclipticPosition } from "@/lib/astro/zodiac";
 import type { Chart, PlanetId, PlanetLongitudes, PlanetPlacement } from "@/types/chart";
-import { CENTER, LANES, placePlanets, pointAt, signDividers } from "./wheel-geometry";
+import {
+  CENTER,
+  LANES,
+  OUTER_RADIUS,
+  WHEEL_SIZE,
+  layoutMarkers,
+  markerPositions,
+  placePlanets,
+  pointAt,
+  signDividers,
+} from "./wheel-geometry";
 
 const SPREAD_OUT: PlanetLongitudes = {
   sun: 0,
@@ -59,6 +69,30 @@ describe("signDividers", () => {
     // 0° comes 15° before the rising degree, so it sits just above 9 o'clock.
     expect(dividers[0].from.x).toBeLessThan(CENTER);
     expect(dividers[0].from.y).toBeLessThan(CENTER);
+  });
+});
+
+describe("markerPositions", () => {
+  it("sits two numbers outside the ring and apart from each other", () => {
+    const at = { x: CENTER + 100, y: CENTER };
+    const [first, second] = markerPositions(at, 2);
+    expect(first.x - CENTER).toBeGreaterThan(OUTER_RADIUS);
+    expect(second.x - CENTER).toBeGreaterThan(OUTER_RADIUS);
+    expect(Math.hypot(first.x - second.x, first.y - second.y)).toBeGreaterThan(12);
+    expect(Math.hypot(first.x - CENTER, first.y - CENTER)).toBeLessThan(WHEEL_SIZE / 2);
+  });
+});
+
+describe("layoutMarkers", () => {
+  it("eases apart markers of points that sit close together", () => {
+    const [first, second] = layoutMarkers([
+      { point: "sun", at: pointAt(0, 0, 125), numbers: [2] },
+      { point: "moon", at: pointAt(4, 0, 125), numbers: [2] },
+    ]);
+    expect(Math.hypot(first.x - second.x, first.y - second.y)).toBeGreaterThan(14);
+    for (const marker of [first, second]) {
+      expect(Math.hypot(marker.x - CENTER, marker.y - CENTER)).toBeLessThan(WHEEL_SIZE / 2 - 4);
+    }
   });
 });
 

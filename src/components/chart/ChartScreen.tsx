@@ -9,7 +9,7 @@ import { StepTransition } from "@/components/ui/StepTransition";
 import { clearAnswers, parseAnswers, useSavedAnswersJson } from "@/lib/questionnaire/storage";
 import type { Chart, ChartResponse } from "@/types/chart";
 import { ChartSummary } from "./ChartSummary";
-import { ChartWheel } from "./ChartWheel";
+import { ChartWheel, markersFor } from "./ChartWheel";
 import { UnknownTimeNote } from "./UnknownTimeNote";
 import { useSummary } from "./useSummary";
 
@@ -91,7 +91,10 @@ export function ChartScreen() {
           />
           <ChartWheel
             chart={state.chart}
-            emphasis={summary.result.status === "ready" ? summary.result.data.patterns.flatMap((p) => p.pointIds) : []}
+            emphasis={
+              summary.result.status === "ready" ? summary.result.data.patterns.flatMap((card) => card.pointIds) : []
+            }
+            markers={summary.result.status === "ready" ? markersFor(summary.result.data.patterns) : {}}
           />
           <ChartSummary result={summary.result} onRetry={summary.retry} />
           {state.chart.birthTimeKnown ? null : <UnknownTimeNote />}
