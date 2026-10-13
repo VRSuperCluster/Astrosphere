@@ -91,6 +91,8 @@ src/
       examples/     # gold-standard examples shared by all prompts
     calendar/       # ICS generation (pure functions)
   types/            # shared TypeScript types
+scripts/            # live runners for prompt work (try-summary.ts); spend API credit, never run in tests
+fixtures/           # birth-input fixtures for the live runners; public charts or made-up data only
 docs/
   spec.md           # product spec v0.3 (reference, not always loaded)
   roadmap-v2.md     # paid layers — context only, never implement during MVP

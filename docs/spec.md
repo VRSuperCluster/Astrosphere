@@ -120,7 +120,7 @@ If the user selects "I don't know my birth time," the system builds a solar char
 With an unknown birth time:
 
 - The Ascendant is excluded from transit targets (it sits on the Sun, so it would duplicate the Sun's transits).
-- The Moon is excluded from dated transit targets. Over a day the Moon moves about 13°, so a noon position can be up to ~6.5° off, which moves the date of a slow transit by weeks or months. The Moon can still inform the chart summary in general terms.
+- The Moon is excluded from dated transit targets. Over a day the Moon moves about 13°, so a noon position can be up to ~6.5° off, which moves the date of a slow transit by weeks or months. The Moon informs the chart summary only when its sign is certain: it was in the same sign at 00:00 and 23:59 local time on the birth date (`moonSignCertain` in the chart JSON). Then the summary gets its sign alone, never its degree or house. If the Moon changed sign that day, the summary leaves it out, as it does the Ascendant and MC.
 - House-based detail is left out entirely: transits carry `house: null`, and the prompts are told not to name life areas. Skipping is more honest than guessing.
 
 ## Step 2: Chart Page
@@ -131,7 +131,7 @@ After submission, the user lands on the chart page. This is not a chart explorer
 
 1. The chart is computed in code and the wheel renders immediately. No AI wait for the wheel.
 2. Two AI calls start in parallel as soon as the chart exists:
-   - **Summary call:** small and fast. Fills the read and the pattern cards on this page.
+   - **Summary call:** the smaller of the two, about 20 seconds (the model thinks before answering). Fills the read and the pattern cards on this page.
    - **Calendar call:** larger and slower. Runs in the background while the person reads the summary and enters their email.
 3. By the time they reach the download, the calendar is usually ready. If not, the download area shows a calm, intentional waiting state ("Still writing your year…") and becomes active when it is.
 
@@ -229,6 +229,8 @@ That chart JSON is the single source of truth. The wheel, the summary call, the 
 
 Keep raw ecliptic longitudes in the chart JSON, not only signs and houses. Future layers (e.g. a sidereal view) are derived from them.
 
+A chart without a birth time also carries `moonSignCertain`: whether the Moon was in the same sign all day (see section 4, Unknown Birth Time).
+
 **TRANSIT ENGINE**
 
 **Naming (one scheme everywhere):** `PlanetId` = `sun | moon | mercury | venus | mars | jupiter | saturn | uranus | neptune | pluto`. `PointId` = `PlanetId | asc | mc`. `AspectId` = `conjunction | opposition | square` (natal aspects may add more). The chart JSON, the transit engine, the summary's `pointIds` and the wheel all use these same IDs, so a card can be matched to its dots without translation.
@@ -292,7 +294,7 @@ The model never outputs dates. Entries are joined back to the engine's transit o
 
 One prompt module per output type, sharing a common voice block and the gold-standard examples in `src/lib/ai/examples/`. Future paid documents are added as new modules next to these, not by growing these two.
 
-**Route timing.** The calendar call can take a minute or more. Set `export const maxDuration` on that route and check it against the current Vercel plan's function duration limit.
+**Route timing.** The model thinks before it answers, and a failed validation costs a second turn, so both routes set `export const maxDuration`. The summary takes about 20 seconds; its route allows 60, enough for one repair turn. The calendar call can take a minute or more. Set its limit against the current Vercel plan's function duration limit, including a repair turn.
 
 **Refresh and caching.** With no database and serverless functions, server memory is not a reliable cache. Store both AI results in `sessionStorage`, keyed by a hash of the birth data and context answers (wrapped in try/catch). A refresh restores them instead of calling the API again.
 
@@ -302,7 +304,13 @@ The ICS file is built by a pure function in `src/lib/calendar/` from the engine'
 
 **COST**
 
-Two calls per user. Rough size: summary ~2k input / ~0.8k output tokens; calendar ~4k input / ~4–7k output tokens, depending on the number of entries. At Sonnet-class pricing this lands around ten cents per user or less. Verify against current pricing before launch; it should not constrain product decisions either way.
+Two calls per user. The model thinks by default, and thinking is billed as output.
+
+- **Summary (measured):** about 2.8–3.7k input and 1.6–2k output tokens, of which about 1–1.5k is thinking.
+- **Calendar (estimate, not yet measured):** about 4k input and 4–7k output tokens for the entries, depending on how many there are, plus thinking.
+- **A repair turn** resends the conversation and adds a second answer, roughly doubling that call's cost. It should be rare.
+
+Recompute the per-user cost from current Sonnet 5.5 pricing once the calendar call has been measured (`npm run try:summary` prints input and output tokens per call). It should not constrain product decisions either way.
 
 **CHART VISUAL**
 
@@ -376,7 +384,7 @@ The calendar call is the slowest step. It starts the moment the chart exists, ru
 
 **VOICE CONSISTENCY**
 
-Some outputs land perfectly while others feel generic. Mitigation: invest in the examples library, test across many chart types, and keep temperature moderate (likely 0.7–0.8). Post-launch, periodically generate test calendars and review them.
+Some outputs land perfectly while others feel generic. Mitigation: invest in the examples library and test across many chart types. Temperature can't be tuned: the current model rejects the parameter, so voice consistency rests on the prompt and the examples. Post-launch, periodically generate test calendars and review them.
 
 **CALCULATION ACCURACY**
 
