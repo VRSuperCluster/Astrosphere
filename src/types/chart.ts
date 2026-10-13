@@ -115,6 +115,11 @@ export interface SolarChart extends ChartBase {
   birthTimeKnown: false;
   /** The Sun's position. */
   ascendant: EclipticPosition;
+  /**
+   * The Moon was in the same sign from 00:00 to 23:59 local time, so its sign
+   * holds whatever the birth time was. Its degree and house are still noon guesses.
+   */
+  moonSignCertain: boolean;
 }
 
 export type Chart = TimedChart | SolarChart;

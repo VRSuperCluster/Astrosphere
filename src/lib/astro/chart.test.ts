@@ -152,6 +152,30 @@ describe("calculateChart without a birth time", () => {
     expect(points).not.toContain("asc");
     expect(points).not.toContain("moon");
   });
+
+  // London, June 1990: the Moon stays in Aquarius all of the 13th (312°–325°)
+  // and crosses from Aquarius into Pisces (330°) during the 14th.
+  it("marks the Moon's sign certain when it holds all day", () => {
+    const chart = calculateChart({ ...input, date: { ...DATE, day: 13 } });
+    if (chart.birthTimeKnown) throw new Error("expected a solar chart");
+    expect(chart.planets.moon.sign).toBe("aquarius");
+    expect(chart.moonSignCertain).toBe(true);
+  });
+
+  it("marks the Moon's sign uncertain when it changes during the day", () => {
+    const chart = calculateChart(input);
+    if (chart.birthTimeKnown) throw new Error("expected a solar chart");
+    expect(chart.moonSignCertain).toBe(false);
+  });
+
+  it("checks the day in the place's zone, not UTC", () => {
+    // The crossing is at 08:00 UTC on the 14th; Honolulu's 14th starts two hours later.
+    const honolulu = { ...LONDON, latitude: 21.30694, longitude: -157.85834, timezone: "Pacific/Honolulu" };
+    const chart = calculateChart({ ...input, place: honolulu });
+    if (chart.birthTimeKnown) throw new Error("expected a solar chart");
+    expect(chart.planets.moon.sign).toBe("pisces");
+    expect(chart.moonSignCertain).toBe(true);
+  });
 });
 
 describe("calculateChart with the real ephemeris", () => {

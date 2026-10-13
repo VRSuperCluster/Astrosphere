@@ -27,6 +27,7 @@ function chartWith(longitudes: PlanetLongitudes, rising = 100): Chart {
     birthTimeKnown: false,
     moment: { utc: "1990-06-14T11:00:00.000Z", zone: "UTC", utcOffsetMinutes: 0, dstAdjustment: "none" },
     ascendant: eclipticPosition(rising),
+    moonSignCertain: false,
     planets,
     houses: [],
     aspects: [],

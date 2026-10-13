@@ -11,6 +11,7 @@ import type { Chart, ChartResponse } from "@/types/chart";
 import { ChartSummary } from "./ChartSummary";
 import { ChartWheel } from "./ChartWheel";
 import { UnknownTimeNote } from "./UnknownTimeNote";
+import { useSummary } from "./useSummary";
 
 type ChartState = { status: "loading" } | { status: "failed" } | { status: "ready"; chart: Chart };
 
@@ -20,6 +21,7 @@ export function ChartScreen() {
   const saved = useSavedAnswersJson();
   const [state, setState] = useState<ChartState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
+  const summary = useSummary(state.status === "ready" ? state.chart : null, saved);
 
   useEffect(() => {
     if (saved === undefined) return;
@@ -87,8 +89,11 @@ export function ChartScreen() {
                 : "Here's what you're working with."
             }
           />
-          <ChartWheel chart={state.chart} />
-          <ChartSummary />
+          <ChartWheel
+            chart={state.chart}
+            emphasis={summary.result.status === "ready" ? summary.result.data.patterns.flatMap((p) => p.pointIds) : []}
+          />
+          <ChartSummary result={summary.result} onRetry={summary.retry} />
           {state.chart.birthTimeKnown ? null : <UnknownTimeNote />}
           <Link href="/" className={`inline-block ${buttonClassName("quiet")}`}>
             Change your answers

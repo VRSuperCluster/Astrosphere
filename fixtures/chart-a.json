@@ -1,0 +1,9 @@
+{
+  "label": "Timed, public chart (Keanu Reeves, Astro-Seek data)",
+  "date": { "year": 1964, "month": 9, "day": 2 },
+  "time": { "known": true, "time": { "hour": 5, "minute": 41 } },
+  "place": { "name": "Beirut", "latitude": 33.9, "longitude": 35.5, "timezone": "Asia/Beirut" },
+  "firstName": "Keanu",
+  "lifeArea": "creativity",
+  "changeStance": "resistsIt"
+}

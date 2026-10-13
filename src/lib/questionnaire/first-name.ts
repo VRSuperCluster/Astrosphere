@@ -3,7 +3,7 @@ import type { FirstNameResult } from "@/types/questionnaire";
 /** Longest name we accept. The name is sent to the AI prompt. */
 export const MAX_FIRST_NAME_LENGTH = 40;
 
-function normalizeFirstName(raw: string): string {
+export function normalizeFirstName(raw: string): string {
   return raw.trim().replace(/\s+/g, " ");
 }
 

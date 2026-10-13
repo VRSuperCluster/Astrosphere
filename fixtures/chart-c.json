@@ -1,0 +1,6 @@
+{
+  "label": "No birth time, Moon sign uncertain (London, 14 June 1990)",
+  "date": { "year": 1990, "month": 6, "day": 14 },
+  "time": { "known": false },
+  "place": { "name": "London", "latitude": 51.50853, "longitude": -0.12574, "timezone": "Europe/London" }
+}

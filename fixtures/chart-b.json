@@ -1,0 +1,9 @@
+{
+  "label": "No birth time, Moon sign certain (London, 13 June 1990)",
+  "date": { "year": 1990, "month": 6, "day": 13 },
+  "time": { "known": false },
+  "place": { "name": "London", "latitude": 51.50853, "longitude": -0.12574, "timezone": "Europe/London" },
+  "firstName": "Ada",
+  "lifeArea": "career",
+  "changeStance": "inTheMiddle"
+}

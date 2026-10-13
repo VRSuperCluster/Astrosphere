@@ -7,6 +7,7 @@ import type {
   PlanetPlacement,
   PointId,
 } from "@/types/chart";
+import type { BirthDate, BirthTime } from "@/types/questionnaire";
 import { ascendant, midheaven } from "./angles";
 import { natalAspects } from "./aspects";
 import { ephemeris, planetLongitudes, PLANETS, type EphemerisProvider } from "./ephemeris";
@@ -14,6 +15,8 @@ import { birthTimeToUtc } from "./timezone";
 import { eclipticPosition, normalizeDegrees, SIGNS, signIndex } from "./zodiac";
 
 const SOLAR_CHART_TIME = { hour: 12, minute: 0 };
+const START_OF_DAY = { hour: 0, minute: 0 };
+const END_OF_DAY = { hour: 23, minute: 59 };
 
 export function calculateChart(
   { date, time, place }: ChartInput,
@@ -30,6 +33,7 @@ export function calculateChart(
       birthTimeKnown: false,
       moment,
       ascendant: sun,
+      moonSignCertain: moonSignHoldsAllDay(date, place.timezone, provider),
       ...wholeSignHouses(sun, longitudes),
       aspects: natalAspects(planetPoints.filter(([point]) => point !== "moon")),
     };
@@ -49,6 +53,13 @@ export function calculateChart(
     ...wholeSignHouses(asc, longitudes),
     aspects: natalAspects([...planetPoints, ["asc", asc.longitude], ["mc", mc.longitude]]),
   };
+}
+
+/** The Moon never moves backwards, so the same sign at both ends of the day means the same sign all day. */
+function moonSignHoldsAllDay(date: BirthDate, zone: string, provider: EphemerisProvider): boolean {
+  const moonAt = (time: BirthTime) =>
+    signIndex(provider.longitude("moon", new Date(birthTimeToUtc(date, time, zone).utc)));
+  return moonAt(START_OF_DAY) === moonAt(END_OF_DAY);
 }
 
 /** House 1 is the whole sign `first` falls in; each later sign is the next house. */
