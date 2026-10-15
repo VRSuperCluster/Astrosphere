@@ -1,5 +1,6 @@
 import type { Chart } from "./chart";
 import type { SummaryContext } from "./summary";
+import type { HousePlacement } from "./transit";
 
 /** One dated transit, with the engine's date and the model's words. */
 export interface CalendarEntry {
@@ -10,12 +11,32 @@ export interface CalendarEntry {
   description: string;
 }
 
+/** A house stay with the one or two sentences written for it. */
+export interface CalendarPlacement extends HousePlacement {
+  text: string;
+}
+
+/** A house change later in the month than the card's date. */
+export interface CalendarChange {
+  /** YYYY-MM-DD, local: the day the new stay begins. */
+  date: string;
+  placement: CalendarPlacement;
+}
+
 /** One monthly card. The file dates the first of these from `Calendar.generatedOn`. */
 export interface CalendarMonth {
   /** YYYY-MM */
   month: string;
   title: string;
   description: string;
+  /**
+   * Backdrop stays active on the card's date, Jupiter through Pluto.
+   * `text` is the theme only. The span is rendered in front of it.
+   * Empty when the birth time is unknown.
+   */
+  placements: CalendarPlacement[];
+  /** House changes after the card's date. Shown after the backdrop. */
+  changes: CalendarChange[];
 }
 
 /**
@@ -29,7 +50,7 @@ export interface Calendar {
    */
   generatedOn: string;
   entries: CalendarEntry[];
-  /** Twelve, from the window's first month. */
+  /** One per month, from the window's first month through December of the next year. */
   months: CalendarMonth[];
 }
 

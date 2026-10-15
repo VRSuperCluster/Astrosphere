@@ -42,6 +42,8 @@ export function monthlyContext(input: MonthlyInput): MonthContext[] {
       .flatMap((pair) => activeTransit(pair, range, input))
       .sort((a, b) => a.closestOrb - b.closestOrb),
     stations: input.stations.filter((station) => station.date.startsWith(`${range.month}-`)),
+    placementIds: [],
+    changes: [],
   }));
 }
 

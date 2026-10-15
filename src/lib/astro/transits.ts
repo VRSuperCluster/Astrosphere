@@ -3,6 +3,7 @@ import type { Chart, PlanetId } from "@/types/chart";
 import type { TransitOptions, TransitReport } from "@/types/transit";
 import { ephemeris, memoized, type EphemerisProvider } from "./ephemeris";
 import { monthlyContext, monthRanges } from "./monthly";
+import { changesDuring, housePlacements, placementIdsAt } from "./placements";
 import { bisect, crosses, DAY_MS, type TimeWindow } from "./search";
 import { findStations } from "./stations";
 import { localDate } from "./timezone";
@@ -48,19 +49,33 @@ export function transitReport(
   const hits = pairs.flatMap((pair) => hitsInWindow(pair, window, sky, zone));
   hits.sort((a, b) => a.time - b.time);
   const stations = findStations(settings.planets, window, sky, zone);
+  const ranges = monthRanges(window, monthCount, zone);
+  const stays = chart.birthTimeKnown ? housePlacements(chart.ascendant.longitude, window, zone, sky) : [];
 
   return {
     window: { start: localDate(window.start, zone), end: localDate(window.end, zone) },
     transits: hits.map((hit) => hit.transit),
+    placements: stays.map((stay) => ({
+      id: stay.id,
+      planet: stay.planet,
+      house: stay.house,
+      start: stay.start,
+      end: stay.end,
+    })),
     months: monthlyContext({
-      months: monthRanges(window, monthCount, zone),
+      months: ranges,
       pairs,
       hits,
       stations,
       provider: sky,
       orb: settings.monthlyOrb,
       gridStart: window.start,
-    }),
+    }).map((month, i) => ({
+      ...month,
+      // The card's date: the window start for the first month, the 1st after that.
+      placementIds: placementIdsAt(stays, ranges[i].start),
+      changes: changesDuring(stays, ranges[i].start, ranges[i].end),
+    })),
   };
 }
 

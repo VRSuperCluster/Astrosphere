@@ -53,6 +53,7 @@ describe("POST /api/calendar", () => {
     vi.mocked(callClaude).mockImplementation(async ({ user, schema }) => {
       const payload = JSON.parse(user) as {
         transits: { id: string; date: string }[];
+        placements: { id: string }[];
         months: { month: string }[];
       };
       const data = schema.parse({
@@ -60,6 +61,10 @@ describe("POST /api/calendar", () => {
           transitId: item.id,
           title: "A day that lands",
           description: "You will feel the pressure and you will know which part of it is yours.",
+        })),
+        placements: payload.placements.map((item) => ({
+          id: item.id,
+          text: "This holds for a long stretch, and it runs past this month.",
         })),
         months: payload.months.map((item) => ({
           month: item.month,
@@ -84,6 +89,14 @@ describe("POST /api/calendar", () => {
       payload.transits.map((item) => [item.id, item.date]),
     );
     expect(body.calendar.months.map((month) => month.month)).toEqual(payload.months.map((month) => month.month));
+    expect(body.calendar.months[0].placements.map((placement) => placement.planet)).toEqual([
+      "jupiter",
+      "saturn",
+      "uranus",
+      "neptune",
+      "pluto",
+    ]);
+    expect(body.calendar.months[0].placements.every((placement) => placement.text.startsWith("This holds"))).toBe(true);
   });
 
   it.each([

@@ -6,4 +6,4 @@
  */
 export const SUMMARY_PROMPT_VERSION = "summary-1";
 
-export const CALENDAR_PROMPT_VERSION = "calendar-2";
+export const CALENDAR_PROMPT_VERSION = "calendar-4";

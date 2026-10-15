@@ -4,13 +4,16 @@ import { AiOutputError, type MessagesClient } from "@/lib/ai/call";
 import { calculateChart } from "@/lib/astro/chart";
 import type { Chart } from "@/types/chart";
 import type { Place } from "@/types/places";
-import type { MonthContext, Transit, TransitReport } from "@/types/transit";
+import type { HousePlacement, MonthContext, Transit, TransitReport } from "@/types/transit";
 import {
   CALENDAR_MAX_TOKENS,
   NO_PADDING_INSTRUCTION,
   NULL_HOUSE_INSTRUCTION,
   PASS_INSTRUCTION,
+  PLACEMENT_INSTRUCTION,
+  TIMED_MONTH_INSTRUCTION,
   UNKNOWN_BIRTH_TIME_INSTRUCTION,
+  UNKNOWN_MONTH_INSTRUCTION,
   buildCalendarPrompt,
   generateCalendar,
 } from "./calendar";
@@ -39,7 +42,29 @@ const FIRST = transit("saturn-square-sun-2026-11-02", "2026-11-02", 1, 3, 10, fa
 const MIDDLE = transit("saturn-square-sun-2027-03-14", "2027-03-14", 2, 3, 10, true, false);
 const ONLY = transit("jupiter-conjunction-venus-2027-01-09", "2027-01-09", 1, 1, null, false, false);
 
-const REPORT = reportOf([FIRST, MIDDLE, ONLY]);
+const BACKDROP: HousePlacement = {
+  id: "saturn-8-2026-02-14",
+  planet: "saturn",
+  house: 8,
+  start: "2026-02-14",
+  end: "2028-04-12",
+};
+const JUPITER_BEFORE: HousePlacement = {
+  id: "jupiter-12-2026-06-30",
+  planet: "jupiter",
+  house: 12,
+  start: "2026-06-30",
+  end: "2027-07-26",
+};
+const JUPITER_AFTER: HousePlacement = {
+  id: "jupiter-1-2027-07-26",
+  planet: "jupiter",
+  house: 1,
+  start: "2027-07-26",
+  end: "2028-08-19",
+};
+
+const REPORT = reportOf([FIRST, MIDDLE, ONLY], [BACKDROP]);
 const QUIET = reportOf([ONLY]);
 
 function transit(
@@ -55,7 +80,7 @@ function transit(
   return { id, date, transiting, natal, aspect, house, pass, totalPasses, previousPassInWindow, nextPassInWindow };
 }
 
-function reportOf(transits: Transit[]): TransitReport {
+function reportOf(transits: Transit[], placements: HousePlacement[] = []): TransitReport {
   // 15 October 2026 through December 2027: fifteen cards.
   const months = Array.from({ length: 15 }, (_, i): MonthContext => {
     const date = new Date(Date.UTC(2026, 9 + i, 1));
@@ -63,6 +88,8 @@ function reportOf(transits: Transit[]): TransitReport {
       month: `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`,
       active: [],
       stations: [],
+      placementIds: placements.map((placement) => placement.id),
+      changes: [],
     };
   });
   months[0] = {
@@ -79,8 +106,10 @@ function reportOf(transits: Transit[]): TransitReport {
       },
     ],
     stations: [{ planet: "saturn", direction: "retrograde", date: "2026-10-04" }],
+    placementIds: placements.map((placement) => placement.id),
+    changes: [],
   };
-  return { window: { start: "2026-10-15", end: "2028-01-01" }, transits, months };
+  return { window: { start: "2026-10-15", end: "2028-01-01" }, transits, months, placements };
 }
 
 function modelOf(source: TransitReport): CalendarModelOutput {
@@ -90,6 +119,7 @@ function modelOf(source: TransitReport): CalendarModelOutput {
       title: `Title for ${item.id}`,
       description: "You will feel this land, and you will know what it is asking of you.",
     })),
+    placements: source.placements.map((item) => ({ id: item.id, text: `Theme for ${item.planet} in house ${item.house}` })),
     months: source.months.map((month) => ({
       month: month.month,
       title: `Month ${month.month}`,
@@ -131,6 +161,9 @@ describe("generateCalendar", () => {
     ["an unknown transitId", (model) => { model.entries[0].transitId = "not-a-transit"; }, 'Unknown transitId "not-a-transit"'],
     ["a duplicate transitId", (model) => { model.entries.push({ ...model.entries[0] }); }, `transitId "${FIRST.id}" is duplicated.`],
     ["a missing month", (model) => void model.months.shift(), `Missing month "${REPORT.months[0].month}"`],
+    ["a missing placement id", (model) => void model.placements.shift(), `Missing placementId "${BACKDROP.id}"`],
+    ["an unknown placement id", (model) => { model.placements[0].id = "not-a-stay"; }, 'Unknown placementId "not-a-stay"'],
+    ["a year in a placement", (model) => { model.placements[0].text = "This holds until 2028."; }, `Placement "${BACKDROP.id}" contains a year.`],
   ])("repairs %s", async (_, spoil, message) => {
     const bad = modelOf(REPORT);
     spoil(bad);
@@ -188,7 +221,37 @@ describe("generateCalendar", () => {
     );
     expect(calendar.entries.map((entry) => entry.date)).not.toContain("1999-01-01");
     expect(calendar.months.map((month) => month.month)).toEqual(REPORT.months.map((month) => month.month));
+    expect(calendar.months[0].placements.map((placement) => [placement.id, placement.text])).toEqual([
+      [BACKDROP.id, "Theme for saturn in house 8"],
+    ]);
+    expect(calendar.months[0].changes).toEqual([]);
     expect(calendarSchema.safeParse(calendar).success).toBe(true);
+  });
+
+  it("keeps the current stay on an ingress month and carries the new one after it", async () => {
+    const source = reportOf([ONLY], [JUPITER_BEFORE, JUPITER_AFTER]);
+    const june = source.months.find((month) => month.month === "2027-06")!;
+    const july = source.months.find((month) => month.month === "2027-07")!;
+    const august = source.months.find((month) => month.month === "2027-08")!;
+    june.placementIds = [JUPITER_BEFORE.id];
+    july.placementIds = [JUPITER_BEFORE.id];
+    july.changes = [{ date: "2027-07-26", placementId: JUPITER_AFTER.id }];
+    august.placementIds = [JUPITER_AFTER.id];
+    const { client } = fakeClient({ text: JSON.stringify(modelOf(source)) });
+
+    const { calendar } = await write(TIMED, source, client);
+    const juneCard = calendar.months.find((month) => month.month === "2027-06");
+    const julyCard = calendar.months.find((month) => month.month === "2027-07");
+    const augustCard = calendar.months.find((month) => month.month === "2027-08");
+
+    expect(juneCard?.placements.map((placement) => placement.id)).toEqual([JUPITER_BEFORE.id]);
+    expect(juneCard?.changes).toEqual([]);
+    expect(julyCard?.placements.map((placement) => placement.id)).toEqual([JUPITER_BEFORE.id]);
+    expect(julyCard?.changes.map((change) => [change.date, change.placement.text])).toEqual([
+      ["2027-07-26", "Theme for jupiter in house 1"],
+    ]);
+    expect(augustCard?.placements.map((placement) => placement.id)).toEqual([JUPITER_AFTER.id]);
+    expect(augustCard?.changes).toEqual([]);
   });
 });
 
@@ -200,7 +263,15 @@ describe("buildCalendarPrompt", () => {
     expect(system).toContain(PASS_INSTRUCTION);
     expect(system).toContain(NULL_HOUSE_INSTRUCTION);
     expect(system).toContain(NO_PADDING_INSTRUCTION);
+    expect(system).toContain(PLACEMENT_INSTRUCTION);
+    expect(system).toContain(TIMED_MONTH_INSTRUCTION);
     expect(system).not.toContain(UNKNOWN_BIRTH_TIME_INSTRUCTION);
+    expect(system).not.toContain(UNKNOWN_MONTH_INSTRUCTION);
+    expect(system).toContain("Saturn is structure, obligation and limits");
+    expect(system).not.toContain("may name the year");
+    expect(payload.placements).toEqual([
+      { id: BACKDROP.id, planet: "saturn", house: 8, start: "2026-02-14", end: "2028-04-12" },
+    ]);
     expect(
       payload.transits.map(
         (item: { pass: number; totalPasses: number; previousPassInWindow: boolean; nextPassInWindow: boolean }) => [
@@ -223,7 +294,10 @@ describe("buildCalendarPrompt", () => {
     const { system, user } = buildCalendarPrompt(SOLAR, {}, QUIET);
     const payload = JSON.parse(user);
     expect(system).toContain(UNKNOWN_BIRTH_TIME_INSTRUCTION);
+    expect(system).toContain(UNKNOWN_MONTH_INSTRUCTION);
     expect(system).toContain(NULL_HOUSE_INSTRUCTION);
+    expect(system).not.toContain(PLACEMENT_INSTRUCTION);
+    expect(payload.placements).toEqual([]);
     expect(payload.transits).toEqual([
       expect.objectContaining({
         id: ONLY.id,

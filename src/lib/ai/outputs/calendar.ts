@@ -5,7 +5,7 @@ import type { TransitReport } from "@/types/transit";
 import { calendarWindow, transitReport } from "@/lib/astro/transits";
 import { chartFacts, describePerson } from "../chart-facts";
 import { callClaude, type ClaudeResult, type MessagesClient } from "../call";
-import { CALENDAR_ENTRY_EXAMPLES, MONTH_CARD_EXAMPLES } from "../examples/calendar";
+import { CALENDAR_ENTRY_EXAMPLES, MONTH_CARD_EXAMPLES, PLACEMENT_EXAMPLES } from "../examples/calendar";
 import { VOICE_BLOCK } from "../voice";
 import { calendarModelSchemaFor, type CalendarModelOutput } from "./calendar-schema";
 
@@ -41,7 +41,18 @@ export const UNKNOWN_BIRTH_TIME_INSTRUCTION =
 
 export const NO_PADDING_INSTRUCTION =
   "Write one entry for each transit you are given, and one card for each month, including months with nothing exact in them. " +
-  "If only a few transits are listed, write only those. Do not invent entries to fill the year. The monthly cards carry a quiet year.";
+  "If only a few transits are listed, write only those. Do not invent entries to fill the year.";
+
+export const PLACEMENT_INSTRUCTION =
+  "placements are the long backdrop: each outer planet's stay in one house. start and end are the real dates of that stay, and they may fall outside this calendar.\n" +
+  "Write each placement once, as one or two sentences of the theme only. No years, no dates, and no \"until\". Code writes the span in front of your sentence.\n" +
+  "When two placements share a house, keep their themes distinct. Don't let them repeat each other. Saturn is structure, obligation and limits. Neptune is blur, ideals and uncertainty.";
+
+export const TIMED_MONTH_INSTRUCTION =
+  "On a timed chart the month description is only what is active this month: the transits in active, and any station. One or two sentences. When active is empty, one line is enough.";
+
+export const UNKNOWN_MONTH_INSTRUCTION =
+  "A month description is 2–4 sentences: what the month is for, and one thing to watch.";
 
 export interface CalendarRun {
   calendar: Calendar;
@@ -93,6 +104,14 @@ export function buildCalendarPrompt(
 export function joinCalendar(report: TransitReport, model: CalendarModelOutput): Calendar {
   const entries = new Map(model.entries.map((entry) => [entry.transitId, entry]));
   const months = new Map(model.months.map((month) => [month.month, month]));
+  const placementText = new Map(model.placements.map((placement) => [placement.id, placement.text]));
+  const placements = new Map(
+    report.placements.map((placement) => {
+      const text = placementText.get(placement.id);
+      if (!text) throw new Error(`No text for placement ${placement.id}`);
+      return [placement.id, { ...placement, text }] as const;
+    }),
+  );
   return {
     generatedOn: report.window.start,
     entries: report.transits.map((transit) => {
@@ -103,7 +122,21 @@ export function joinCalendar(report: TransitReport, model: CalendarModelOutput):
     months: report.months.map((month) => {
       const card = months.get(month.month);
       if (!card) throw new Error(`No text for month ${month.month}`);
-      return { month: month.month, title: card.title, description: card.description };
+      return {
+        month: month.month,
+        title: card.title,
+        description: card.description,
+        placements: month.placementIds.map((id) => {
+          const placement = placements.get(id);
+          if (!placement) throw new Error(`No text for placement ${id}`);
+          return placement;
+        }),
+        changes: month.changes.map((change) => {
+          const placement = placements.get(change.placementId);
+          if (!placement) throw new Error(`No text for placement ${change.placementId}`);
+          return { date: change.date, placement };
+        }),
+      };
     }),
   };
 }
@@ -115,6 +148,10 @@ function systemPrompt(chart: Chart): string {
   const months = MONTH_CARD_EXAMPLES.map(
     (example) => `[${example.internal}]\ntitle: ${example.title}\ndescription: ${example.description}`,
   ).join("\n\n");
+  const placements = PLACEMENT_EXAMPLES.map(
+    (example) => `[${example.internal}]\ntext: ${example.text}`,
+  ).join("\n\n");
+  const timed = chart.birthTimeKnown;
 
   return [
     VOICE_BLOCK,
@@ -124,26 +161,29 @@ You are writing one person's calendar, from today through the end of next year: 
 ${PASS_INSTRUCTION}`,
     `HOUSE
 ${NULL_HOUSE_INSTRUCTION}`,
-    chart.birthTimeKnown ? null : `BIRTH TIME UNKNOWN\n${UNKNOWN_BIRTH_TIME_INSTRUCTION}`,
+    timed ? null : `BIRTH TIME UNKNOWN\n${UNKNOWN_BIRTH_TIME_INSTRUCTION}`,
+    timed ? `BACKDROP\n${PLACEMENT_INSTRUCTION}` : null,
+    `MONTHS\n${timed ? TIMED_MONTH_INSTRUCTION : UNKNOWN_MONTH_INSTRUCTION}`,
     `HOW MANY
 ${NO_PADDING_INSTRUCTION}`,
     `OUTPUT
 Return one JSON object and nothing else:
 {
   "entries": [{ "transitId": "the id you were given", "title": "the day's headline", "description": "2–4 sentences" }],
-  "months": [{ "month": "YYYY-MM", "title": "the month's headline", "description": "2–4 sentences: what the month is for, and one thing to watch" }]
+  "placements": [${timed ? '{ "id": "the id you were given", "text": "one or two sentences" }' : ""}],
+  "months": [{ "month": "YYYY-MM", "title": "the month's headline", "description": "${timed ? "what is active this month" : "2–4 sentences: what the month is for, and one thing to watch"}" }]
 }
-- Use each transitId exactly once, and no others. Use each month exactly once, and no others.
-- Do not write dates, weekdays, or month names. The date on each transit is only so you can feel how far apart the passes are. The calendar adds the dates.
-- A title is one line. A description is 2–4 sentences.
+- Use each transitId exactly once, and no others. Use each month exactly once, and no others. Use each placement id exactly once, and no others.
+- Do not write dates, weekdays, or month names. ${timed ? "A placement is the theme only, with no year. " : ""}The date on each transit is only so you can feel how far apart the passes are. The calendar adds the dates.
+- A title is one line. An entry description is 2–4 sentences.
 - Use the first name at most once in the whole year, or not at all.`,
     `EXAMPLES
-The notes in brackets describe the transit or the month behind each example. They are for you; never reuse their wording. Match the quality, not the content.
+The notes in brackets describe the transit, the stay, or the month behind each example. They are for you; never reuse their wording. Match the quality, not the content.
 
 Dated entries:
 
 ${entries}
-
+${timed ? `\nBackdrop:\n\n${placements}\n` : ""}
 Monthly cards:
 
 ${months}`,
@@ -167,6 +207,13 @@ function payload(chart: Chart, context: SummaryContext, report: TransitReport) {
       totalPasses: transit.totalPasses,
       previousPassInWindow: transit.previousPassInWindow,
       nextPassInWindow: transit.nextPassInWindow,
+    })),
+    placements: report.placements.map((placement) => ({
+      id: placement.id,
+      planet: placement.planet,
+      house: placement.house,
+      start: placement.start,
+      end: placement.end,
     })),
     months: report.months.map((month) => ({
       month: month.month,

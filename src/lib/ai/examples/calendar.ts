@@ -110,3 +110,22 @@ export const MONTH_CARD_EXAMPLES = [
       "Pick up what you put down a few months ago and give it one honest week before you decide whether it's still yours.",
   },
 ] as const;
+
+/**
+ * Backdrop themes, written once per house stay. Code adds the span.
+ * `internal` is never shown to the person. The text names no year.
+ */
+export const PLACEMENT_EXAMPLES = [
+  {
+    internal: "Jupiter in house 12, from 2026-06-30 until 2027-07-26",
+    text: "A private sorting-out of who you are stays offstage. Let it.",
+  },
+  {
+    internal: "Saturn in house 8, sharing the house with Neptune, from 2026-02-14 until 2028-04-12",
+    text: "What you owe and what you share gets a harder structure. Name the limit and keep it.",
+  },
+  {
+    internal: "Neptune in house 8, the same house as the Saturn stay, from 2026-01-26 until 2038-05-22",
+    text: "The terms of what you share stay hard to see. Get the obligation in writing.",
+  },
+] as const;

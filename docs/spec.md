@@ -172,11 +172,19 @@ Example:
 
 **2. MONTHLY CONTEXT CARDS**
 
-One all-day event per month, from the generation month through December of the next year (13 cards when generation falls on 31 December, 24 when it falls on 1 January). The first card is dated on the generation day if it falls after the 1st; every later card is on the 1st. Each card is the month's weather: which longer themes are active, what the month is for, one thing to watch. Two to four sentences.
+One all-day event per month, from the generation month through December of the next year (13 cards when generation falls on 31 December, 24 when it falls on 1 January). The first card is dated on the generation day if it falls after the 1st; every later card is on the 1st.
 
-These exist because of a real calendar limitation: events that span weeks or months take up space in every week of the month view and bury the dated entries. One card per month carries the background instead.
+On a timed chart the card has two layers. The backdrop is the outer planets' Whole Sign house stays active on the card's date (the generation day for the first card, the 1st after that), in the order Jupiter, Saturn, Uranus, Neptune, Pluto. The engine finds every stay that touches the window and records the real start and end, including dates outside the window. The model writes each stay once, as one or two sentences of theme with no dates, keyed by a deterministic id (`jupiter-12-2026-06-30`). Code puts the span in front, month-precise: "Until July 2027 — …", or "Since July 2027 until August 2028 — …" when the stay began during the window.
 
-The card's input is computed in code: every transit within orb at any point during that month, plus any outer planet stations (turning retrograde or direct) that month.
+If a planet changes house after the card's date and before the month ends, the card adds a line after the backdrop: "From 26 July — " plus the new stay's theme. The next month's card shows that stay as the backdrop.
+
+The month's own text is what is active that month: one or two sentences, or one line when nothing is in orb.
+
+A chart without a birth time has no backdrop. Its month text is unchanged: two to four sentences on what the month is for, and one thing to watch.
+
+These cards exist because of a real calendar limitation: events that span weeks or months take up space in every week of the month view and bury the dated entries. One card per month carries the background instead.
+
+The card's input is computed in code: every transit within orb at any point during that month, any outer planet stations (turning retrograde or direct) that month, and, when the birth time is known, the house stays above.
 
 **TRANSIT SELECTION FOR MVP**
 
@@ -252,7 +260,7 @@ A function that takes the chart JSON and finds every exact hit in the window fro
 }
 ```
 
-It also produces, per month, the list of transits in orb and any outer planet stations. Those feed the monthly cards.
+It also produces, per month, the list of transits in orb and any outer planet stations. When the birth time is known it also produces the outer planets' Whole Sign house stays that touch the window, each with its real start and end, the stay active on each card's date, and any ingress later in that month. Those feed the monthly cards.
 
 Exact hits are found by searching for the moment the angular separation crosses the exact aspect angle, not by sampling daily and picking the closest day. Retrograde motion produces multiple crossings; each is one hit.
 
@@ -282,17 +290,20 @@ Two calls to Claude, both server-side in route handlers, started in parallel fro
 
 *Calendar call* (`src/lib/ai/outputs/calendar.ts`)
 
-- Input: chart JSON, transit list, monthly context data, context answers, first name.
+- Input: chart JSON, transit list, monthly context data, house stays when the birth time is known, context answers, first name.
 - Output:
 
 ```ts
 {
   entries: Array<{ transitId: string; title: string; description: string }>;
+  placements: Array<{ id: string; text: string }>; // empty when the birth time is unknown
   months: Array<{ month: string /* YYYY-MM */; title: string; description: string }>;
 }
 ```
 
-The model never outputs dates. Entries are joined back to the engine's transit objects by `transitId`, and the date comes from the engine. Validation fails if an ID is missing, unknown or duplicated, or if a month is missing. On failure: retry once, then show the fallback.
+The model never outputs dates. A placement text that contains a 4-digit year fails validation. Entries are joined back to the engine's transit objects by `transitId`, and the date comes from the engine. Each placement is joined by its id. Validation fails if an id is missing, unknown or duplicated, or if a month is missing. On failure: retry once, then show the fallback.
+
+Code copies each theme onto the months where that stay is active on the card's date, in the order Jupiter, Saturn, Uranus, Neptune, Pluto, and records a later house change on that month. The joined month carries `placements: Array<{ id, planet, house, start, end, text }>` and `changes: Array<{ date, placement }>`.
 
 One prompt module per output type, sharing a common voice block and the gold-standard examples in `src/lib/ai/examples/`. Future paid documents are added as new modules next to these, not by growing these two.
 
