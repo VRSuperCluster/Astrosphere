@@ -26,7 +26,7 @@ describe("calendarCacheKey", () => {
 
     expect(day).not.toBe(localDate(now, "UTC"));
     expect(key).toBe(cacheKey({ output: "calendar", promptVersion: CALENDAR_PROMPT_VERSION }, ANSWERS, day));
-    expect(key).not.toBe(cacheKey({ output: "calendar", promptVersion: "calendar-2" }, ANSWERS, day));
+    expect(key).not.toBe(cacheKey({ output: "calendar", promptVersion: "calendar-1" }, ANSWERS, day));
     expect(key).not.toBe(cacheKey({ output: "calendar", promptVersion: CALENDAR_PROMPT_VERSION }, ANSWERS));
   });
 });

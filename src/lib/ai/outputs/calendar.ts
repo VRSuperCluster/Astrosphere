@@ -2,16 +2,12 @@ import type { Chart } from "@/types/chart";
 import type { Calendar } from "@/types/calendar";
 import type { SummaryContext } from "@/types/summary";
 import type { TransitReport } from "@/types/transit";
-import { transitReport } from "@/lib/astro/transits";
+import { calendarWindow, transitReport } from "@/lib/astro/transits";
 import { chartFacts, describePerson } from "../chart-facts";
 import { callClaude, type ClaudeResult, type MessagesClient } from "../call";
 import { CALENDAR_ENTRY_EXAMPLES, MONTH_CARD_EXAMPLES } from "../examples/calendar";
 import { VOICE_BLOCK } from "../voice";
-import {
-  CALENDAR_MONTHS,
-  calendarModelSchemaFor,
-  type CalendarModelOutput,
-} from "./calendar-schema";
+import { calendarModelSchemaFor, type CalendarModelOutput } from "./calendar-schema";
 
 export { CALENDAR_PROMPT_VERSION as PROMPT_VERSION } from "../versions";
 
@@ -22,11 +18,16 @@ export { CALENDAR_PROMPT_VERSION as PROMPT_VERSION } from "../versions";
 export const CALENDAR_MAX_TOKENS = 16_000;
 
 export const PASS_INSTRUCTION =
-  "Each transit carries pass and totalPasses. They count the whole run, including hits before or after this year.\n" +
-  "- The first pass (pass 1, when totalPasses is more than 1) introduces the theme.\n" +
-  "- A middle pass (pass is greater than 1 and less than totalPasses) revisits it: this is back, and it is asking the question again.\n" +
-  "- The final pass (pass equals totalPasses, and totalPasses is more than 1) closes it: last time this comes up for a while — decide.\n" +
-  "- A single pass (totalPasses is 1) stands alone. Don't write it as part of a series.";
+  "Each transit carries pass, totalPasses, previousPassInWindow and nextPassInWindow. " +
+  "pass and totalPasses count the whole run, including hits before or after this window. " +
+  "previousPassInWindow is true only when the previous pass falls inside the window. " +
+  "nextPassInWindow is true only when the next pass falls inside the window.\n" +
+  "- A single pass (totalPasses is 1) stands alone. Don't write it as part of a series.\n" +
+  "- The first pass (pass is 1, and totalPasses is more than 1) introduces the theme.\n" +
+  "- When previousPassInWindow is false and pass is greater than 1, the theme is already in motion in their life. Write it as something underway. Never write \"again\" or \"back\".\n" +
+  "- When previousPassInWindow is true, this pass meets the theme again inside this calendar.\n" +
+  "- When nextPassInWindow is false and pass is less than totalPasses, say the theme isn't finished. Don't promise another round, and don't say when it returns.\n" +
+  "- The final pass (pass equals totalPasses, and totalPasses is more than 1) closes it: last time this comes up for a while — decide.";
 
 export const NULL_HOUSE_INSTRUCTION =
   "house is a number from 1 to 12, or null when the birth time is unknown. " +
@@ -51,13 +52,14 @@ export interface CalendarRun {
 
 /**
  * Writes the year and joins the model's words onto the engine's dates.
- * Pass `report` in tests; otherwise the twelve months start from `now`.
+ * Pass `report` in tests; otherwise the window runs from the start of `now`'s day
+ * through 31 December of the next year.
  */
 export async function generateCalendar({
   chart,
   context,
   now = new Date(),
-  report = transitReport(chart, { start: now, months: CALENDAR_MONTHS }),
+  report = transitReport(chart, calendarWindow(now, chart.moment.zone)),
   client,
 }: {
   chart: Chart;
@@ -117,7 +119,7 @@ function systemPrompt(chart: Chart): string {
   return [
     VOICE_BLOCK,
     `TASK
-You are writing one person's next year, as calendar entries: a headline and a short note for each transit, and a card for each month. The person reads these as events in their calendar. Build them from the data in the user message. The person never sees that data.`,
+You are writing one person's calendar, from today through the end of next year: a headline and a short note for each transit, and a card for each month. The person reads these as events in their calendar. Build them from the data in the user message. The person never sees that data.`,
     `PASSES
 ${PASS_INSTRUCTION}`,
     `HOUSE
@@ -163,6 +165,8 @@ function payload(chart: Chart, context: SummaryContext, report: TransitReport) {
       house: transit.house,
       pass: transit.pass,
       totalPasses: transit.totalPasses,
+      previousPassInWindow: transit.previousPassInWindow,
+      nextPassInWindow: transit.nextPassInWindow,
     })),
     months: report.months.map((month) => ({
       month: month.month,

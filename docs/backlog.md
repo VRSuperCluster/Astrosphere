@@ -116,12 +116,17 @@ Do A, then the two checks in B before designing the calendar call: they decide i
 ### E. Prompt iteration (step 7): notes
 
 - **Context answers change the advice; they are never reported back as insight.** "You're in a period of upheaval", after the person chose "I'm in the middle of one", fails this even though it isn't a label echo.
-- **Rules are concrete and doable, with no timeframe.** Two of three test cards said "this week", and it reads as a template. The phrasing comes from our own text, so reword all of these to "concrete and doable", then bump `SUMMARY_PROMPT_VERSION`:
+- **Rules are concrete and doable, with no timeframe.** Two of three test cards said "this week", and it reads as a template. The phrasing comes from our own text, so reword all of these to "concrete and doable", then bump the prompt version of whichever call the file belongs to (`SUMMARY_PROMPT_VERSION` or `CALENDAR_PROMPT_VERSION`):
   - the voice block's quality bar (`src/lib/ai/voice.ts`)
   - the summary output spec (`src/lib/ai/outputs/summary.ts`)
   - the editing rules in `src/lib/ai/examples/README.md`
   - the example card "Show one unfinished thing to one person this week." (`src/lib/ai/examples/summary.ts`)
+  - the calendar example "every idea that crosses your desk this week" (`src/lib/ai/examples/calendar.ts`), and the monthly example "give it one honest week"
   - spec section 7's test criterion "a rule a person could actually do this week"
+- **Quiet-month cards converge on one template.** The live run used "Nothing is demanded of you, and that's the point" (chart A, October) and "Nothing is pushing on you, and that is the point" (chart B, June), both followed by "Watch for the urge to…". Vary them. On the 24-card run, every chart A card in 2027 also closed with "Watch for", so the tic is not limited to quiet months.
+- **24-card slips to fix with the prompt, separate from any call split.** Chart B's 2027 cards say "January's choices", "the spring", and "Nothing exact". Month names, seasons, and the engine's word "exact" are already forbidden.
+- **Hedge.** Chart A's 21 August 2027 entry says "is likely what needs to change". Same dodge as "you may feel". Catch it in the batch review.
+- **Dated-entry volume.** Spec section 4 estimates 15–35 dated entries a year. The 12-month live run had 8 on chart A and 5 on chart B. When the 20 fixtures exist, record the count for each, then replace that estimate with the real range. Don't update the spec from these two alone.
 - **Focus area versus unknown birth time.** Spec section 4 says the focus area decides which life domains entries lean toward; an unknown birth time means the prompt doesn't name life areas. The current instruction forbids life areas only "on the strength of the data", so the person's own focus answer can still steer the advice. Keep it that way; don't tighten it by accident.
 - **Grammar.** One slip so far ("a observer"). Include a grammar check in the batch review.
 - **Fixtures.** The spec's twenty-chart test needs 20; there are 3. Write the other 17 as a deliberate spread, covering at least:

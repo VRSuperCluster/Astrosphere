@@ -79,7 +79,7 @@ Three screens:
 
 1. A multi-step birth data questionnaire, with two optional life context questions.
 2. A chart page: a minimal natal chart wheel, a short read of the person, and three pattern → rule cards.
-3. A calendar download: an ICS file with twelve months of AI-written transit entries plus twelve monthly context cards, importable into Google Calendar and Apple Calendar.
+3. A calendar download: an ICS file of AI-written transit entries plus one monthly context card per month, from the generation day through 31 December of the next year, importable into Google Calendar and Apple Calendar.
 
 **WHAT DOES NOT SHIP**
 
@@ -156,7 +156,7 @@ Below the summary, before the download, a single email field: "Get your calendar
 
 ## Step 3: Calendar Download
 
-The primary output: an ICS file covering the next twelve months, built from two kinds of entries.
+The primary output: an ICS file from the generation day through 31 December of the next year, built from two kinds of entries. Everyone who generates in the same calendar year shares that 31 December as the last day, which is the moment to ask them back.
 
 **1. DATED TRANSIT ENTRIES**
 
@@ -168,11 +168,11 @@ Example:
 - **Title:** Your patience with half-truths runs out today
 - **Description:** Something you've been tolerating in a relationship or at work is going to feel suddenly intolerable. This isn't impulsive — you've been building toward this clarity for weeks. Follow the frustration. It's telling you where your standards actually are.
 
-**Repeated passes.** Slow planets often make the same aspect two or three times in a year because of retrograde motion. Each exact hit is its own dated entry, and the engine tags it with its pass number and total passes. Both count the whole run, not just the window: a run is the consecutive exact hits of one transiting planet to one natal point at one exact angle, and it can start before the window or end after it. Only hits inside the window become entries, but a hit whose earlier passes came last year is still "3 of 3", and one whose last pass falls after the window is "2 of 3", so the labels stay true. The prompt uses this: the first pass introduces the theme, a middle pass revisits it ("this is back, and it's asking the question again"), the final pass closes it ("last time this comes up for a while — decide").
+**Repeated passes.** Slow planets often make the same aspect two or three times in a year because of retrograde motion. Each exact hit is its own dated entry, and the engine tags it with its pass number and total passes. Both count the whole run, not just the window: a run is the consecutive exact hits of one transiting planet to one natal point at one exact angle, and it can start before the window or end after it. Only hits inside the window become entries, but a hit whose earlier passes came last year is still "3 of 3", and one whose last pass falls after the window is "2 of 3", so the labels stay true. Each hit also carries `previousPassInWindow` and `nextPassInWindow`. The prompt uses them: the first pass introduces the theme; a later pass whose previous pass is inside the window may meet the theme again; when the previous pass fell before the window, the theme is already in motion and the writing does not say "again" or "back"; when a later pass falls after the window, the writing says the theme isn't finished and does not promise another round. The final pass closes it ("last time this comes up for a while — decide").
 
 **2. MONTHLY CONTEXT CARDS**
 
-Twelve all-day events, one on the 1st of each month (the first card is dated on the download day if it falls after the 1st). Each card is the month's weather: which longer themes are active, what the month is for, one thing to watch. Two to four sentences.
+One all-day event per month, from the generation month through December of the next year (13 cards when generation falls on 31 December, 24 when it falls on 1 January). The first card is dated on the generation day if it falls after the 1st; every later card is on the 1st. Each card is the month's weather: which longer themes are active, what the month is for, one thing to watch. Two to four sentences.
 
 These exist because of a real calendar limitation: events that span weeks or months take up space in every week of the month view and bury the dated entries. One card per month carries the background instead.
 
@@ -183,9 +183,9 @@ The card's input is computed in code: every transit within orb at any point duri
 - Transiting planets: Jupiter, Saturn, Uranus, Neptune, Pluto.
 - Natal targets: Sun, Moon, Mercury, Venus, Mars, Ascendant (with the unknown-birth-time exclusions above).
 - Aspects: conjunction, opposition, square. Major aspects only.
-- Window: twelve months from the download date.
+- Window: from the start of the generation day, in the birth zone, through 31 December of the next year.
 
-Expected volume (estimate, depends on the chart): roughly 15–35 dated entries a year including repeated passes, plus the 12 monthly cards. If a chart produces only a handful of dated hits, do not pad the calendar. The monthly cards carry the year.
+Expected volume (estimate, depends on the chart): roughly 15–35 dated entries a year including repeated passes, plus one card per month (13 to 24). If a chart produces only a handful of dated hits, do not pad the calendar. The monthly cards carry the stretch.
 
 # 5. Feature Scope Table
 
@@ -198,8 +198,8 @@ Expected volume (estimate, depends on the chart): roughly 15–35 dated entries 
 | AI chart summary | MVP | *Read + three pattern → rule cards, own call* |
 | Transit calculation | MVP | *Outer planets to personal points, major aspects, repeated passes tagged* |
 | AI calendar generation | MVP | *Own call, runs in the background on the chart page* |
-| Monthly context cards | MVP | *Twelve cards on the 1st of each month* |
-| Calendar ICS export | MVP | *Twelve months, Google/Apple Calendar compatible* |
+| Monthly context cards | MVP | *One card per month through December of the next year; the first on the generation day if that is after the 1st* |
+| Calendar ICS export | MVP | *Through 31 December of the next year, Google/Apple Calendar compatible* |
 | Email capture | MVP | *Single field before download, no account required* |
 | Responsive design | MVP | *Mobile-first, the brand aesthetic from day one* |
 | Payment | V2 | *See roadmap-v2.md* |
@@ -235,7 +235,7 @@ A chart without a birth time also carries `moonSignCertain`: whether the Moon wa
 
 **Naming (one scheme everywhere):** `PlanetId` = `sun | moon | mercury | venus | mars | jupiter | saturn | uranus | neptune | pluto`. `PointId` = `PlanetId | asc | mc`. `AspectId` = `conjunction | opposition | square` (natal aspects may add more). The chart JSON, the transit engine, the summary's `pointIds` and the wheel all use these same IDs, so a card can be matched to its dots without translation.
 
-A function that takes the chart JSON and finds every exact hit in the next twelve months for the selection in section 4. For each hit it produces a structured object:
+A function that takes the chart JSON and finds every exact hit in the window from section 4 for the selection there. For each hit it produces a structured object:
 
 ```ts
 {
@@ -247,6 +247,8 @@ A function that takes the chart JSON and finds every exact hit in the next twelv
   house: number | null;  // Whole Sign house of the natal point; null when birth time is unknown
   pass: number;          // 1-based
   totalPasses: number;   // passes in the whole run, including any outside the window
+  previousPassInWindow: boolean; // the previous pass falls inside the window
+  nextPassInWindow: boolean;     // the next pass falls inside the window
 }
 ```
 

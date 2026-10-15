@@ -2,8 +2,12 @@ import { z } from "zod";
 import type { Calendar } from "@/types/calendar";
 import type { TransitReport } from "@/types/transit";
 
-/** The route always asks the engine for this many monthly cards. */
-export const CALENDAR_MONTHS = 12;
+/**
+ * Cards run from the generation month through December of the next year.
+ * 13 when generation falls on 31 December, 24 when it falls on 1 January.
+ */
+export const CALENDAR_MONTHS_MIN = 13;
+export const CALENDAR_MONTHS_MAX = 24;
 
 /** What the model returns. Dates are not in it; the engine owns those. */
 export interface CalendarModelOutput {
@@ -71,7 +75,8 @@ export const calendarSchema: z.ZodType<Calendar> = z.object({
         description: z.string().trim().min(1),
       }),
     )
-    .length(CALENDAR_MONTHS, { error: `There must be ${CALENDAR_MONTHS} months.` }),
+    .min(CALENDAR_MONTHS_MIN, { error: `There must be at least ${CALENDAR_MONTHS_MIN} months.` })
+    .max(CALENDAR_MONTHS_MAX, { error: `There must be at most ${CALENDAR_MONTHS_MAX} months.` }),
 });
 
 function text(max: number) {

@@ -21,6 +21,10 @@ export interface Transit {
   pass: number;
   /** Hits in the whole run, including any before or after the window. */
   totalPasses: number;
+  /** The previous pass of this run falls inside the window. False when this is pass 1. */
+  previousPassInWindow: boolean;
+  /** The next pass of this run falls inside the window. False when this is the final pass. */
+  nextPassInWindow: boolean;
 }
 
 export type StationDirection = "retrograde" | "direct";
@@ -68,8 +72,16 @@ export interface TransitReport {
 export interface TransitOptions {
   /** The window starts at the beginning of this day, in the birth zone. */
   start: Date;
-  /** Window length in months; also the number of monthly cards. */
+  /**
+   * Window length in calendar months, and the number of monthly cards.
+   * Ignored when `end` is set.
+   */
   months: number;
+  /**
+   * Exclusive end of the window. The calendar passes the start of 1 January
+   * two years on, so the window runs through 31 December of the next year.
+   */
+  end?: Date;
   /** Transiting planets. */
   planets: readonly PlanetId[];
   aspects: readonly TransitAspectId[];

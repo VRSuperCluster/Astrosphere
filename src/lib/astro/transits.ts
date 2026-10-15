@@ -42,7 +42,7 @@ export function transitReport(
   const settings: TransitOptions = { ...DEFAULT_TRANSIT_OPTIONS, ...options };
   const sky = memoized(provider);
   const zone = chart.moment.zone;
-  const window = transitWindow(settings.start, settings.months, zone);
+  const { window, monthCount } = resolveWindow(settings.start, settings.months, settings.end, zone);
 
   const pairs = transitPairs(chart, settings.planets, settings.aspects);
   const hits = pairs.flatMap((pair) => hitsInWindow(pair, window, sky, zone));
@@ -53,7 +53,7 @@ export function transitReport(
     window: { start: localDate(window.start, zone), end: localDate(window.end, zone) },
     transits: hits.map((hit) => hit.transit),
     months: monthlyContext({
-      months: monthRanges(window, settings.months, zone),
+      months: monthRanges(window, monthCount, zone),
       pairs,
       hits,
       stations,
@@ -64,10 +64,35 @@ export function transitReport(
   };
 }
 
-/** From the start of `start`'s day in `zone`, for `months` calendar months. */
-function transitWindow(start: Date, months: number, zone: string): TimeWindow {
+/**
+ * The calendar's window: the start of `now`'s day in `zone`, through 31 December
+ * of the next year. `end` is the first moment of 1 January, two years on.
+ */
+export function calendarWindow(now: Date, zone: string): Pick<TransitOptions, "start" | "end"> {
+  const first = DateTime.fromJSDate(now, { zone }).startOf("day");
+  const end = DateTime.fromObject({ year: first.year + 2, month: 1, day: 1 }, { zone });
+  return { start: first.toJSDate(), end: end.toJSDate() };
+}
+
+/**
+ * `end` wins over `months`. A caller that passes `months` gets that many
+ * calendar months from the start day; the calendar passes `end` instead.
+ */
+function resolveWindow(
+  start: Date,
+  months: number,
+  end: Date | undefined,
+  zone: string,
+): { window: TimeWindow; monthCount: number } {
   const first = DateTime.fromJSDate(start, { zone }).startOf("day");
-  return { start: first.toMillis(), end: first.plus({ months }).toMillis() };
+  if (!end) {
+    return { window: { start: first.toMillis(), end: first.plus({ months }).toMillis() }, monthCount: months };
+  }
+  const last = DateTime.fromJSDate(end, { zone });
+  return {
+    window: { start: first.toMillis(), end: last.toMillis() },
+    monthCount: (last.year - first.year) * 12 + (last.month - first.month),
+  };
 }
 
 function hitsInWindow(
@@ -93,6 +118,8 @@ function hitsInWindow(
             house: pair.house,
             pass: i + 1,
             totalPasses: run.length,
+            previousPassInWindow: i > 0 && run[i - 1] >= window.start && run[i - 1] < window.end,
+            nextPassInWindow: i + 1 < run.length && run[i + 1] >= window.start && run[i + 1] < window.end,
           },
         },
       ];

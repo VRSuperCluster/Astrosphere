@@ -35,20 +35,29 @@ const SOLAR = calculateChart({
   place: LONDON,
 });
 
-const FIRST = transit("saturn-square-sun-2026-11-02", "2026-11-02", 1, 3, 10);
-const MIDDLE = transit("saturn-square-sun-2027-03-14", "2027-03-14", 2, 3, 10);
-const ONLY = transit("jupiter-conjunction-venus-2027-01-09", "2027-01-09", 1, 1, null);
+const FIRST = transit("saturn-square-sun-2026-11-02", "2026-11-02", 1, 3, 10, false, true);
+const MIDDLE = transit("saturn-square-sun-2027-03-14", "2027-03-14", 2, 3, 10, true, false);
+const ONLY = transit("jupiter-conjunction-venus-2027-01-09", "2027-01-09", 1, 1, null, false, false);
 
 const REPORT = reportOf([FIRST, MIDDLE, ONLY]);
 const QUIET = reportOf([ONLY]);
 
-function transit(id: string, date: string, pass: number, totalPasses: number, house: number | null): Transit {
+function transit(
+  id: string,
+  date: string,
+  pass: number,
+  totalPasses: number,
+  house: number | null,
+  previousPassInWindow: boolean,
+  nextPassInWindow: boolean,
+): Transit {
   const [transiting, aspect, natal] = id.split("-") as [Transit["transiting"], Transit["aspect"], Transit["natal"]];
-  return { id, date, transiting, natal, aspect, house, pass, totalPasses };
+  return { id, date, transiting, natal, aspect, house, pass, totalPasses, previousPassInWindow, nextPassInWindow };
 }
 
 function reportOf(transits: Transit[]): TransitReport {
-  const months = Array.from({ length: 12 }, (_, i): MonthContext => {
+  // 15 October 2026 through December 2027: fifteen cards.
+  const months = Array.from({ length: 15 }, (_, i): MonthContext => {
     const date = new Date(Date.UTC(2026, 9 + i, 1));
     return {
       month: `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`,
@@ -71,7 +80,7 @@ function reportOf(transits: Transit[]): TransitReport {
     ],
     stations: [{ planet: "saturn", direction: "retrograde", date: "2026-10-04" }],
   };
-  return { window: { start: "2026-10-15", end: "2027-10-15" }, transits, months };
+  return { window: { start: "2026-10-15", end: "2028-01-01" }, transits, months };
 }
 
 function modelOf(source: TransitReport): CalendarModelOutput {
@@ -192,10 +201,19 @@ describe("buildCalendarPrompt", () => {
     expect(system).toContain(NULL_HOUSE_INSTRUCTION);
     expect(system).toContain(NO_PADDING_INSTRUCTION);
     expect(system).not.toContain(UNKNOWN_BIRTH_TIME_INSTRUCTION);
-    expect(payload.transits.map((item: { pass: number; totalPasses: number }) => [item.pass, item.totalPasses])).toEqual([
-      [1, 3],
-      [2, 3],
-      [1, 1],
+    expect(
+      payload.transits.map(
+        (item: { pass: number; totalPasses: number; previousPassInWindow: boolean; nextPassInWindow: boolean }) => [
+          item.pass,
+          item.totalPasses,
+          item.previousPassInWindow,
+          item.nextPassInWindow,
+        ],
+      ),
+    ).toEqual([
+      [1, 3, false, true],
+      [2, 3, true, false],
+      [1, 1, false, false],
     ]);
     expect(payload.transits).toHaveLength(REPORT.transits.length);
     expect(payload.person.firstName).toBe("Ada");
@@ -206,7 +224,16 @@ describe("buildCalendarPrompt", () => {
     const payload = JSON.parse(user);
     expect(system).toContain(UNKNOWN_BIRTH_TIME_INSTRUCTION);
     expect(system).toContain(NULL_HOUSE_INSTRUCTION);
-    expect(payload.transits).toEqual([expect.objectContaining({ id: ONLY.id, house: null, pass: 1, totalPasses: 1 })]);
+    expect(payload.transits).toEqual([
+      expect.objectContaining({
+        id: ONLY.id,
+        house: null,
+        pass: 1,
+        totalPasses: 1,
+        previousPassInWindow: false,
+        nextPassInWindow: false,
+      }),
+    ]);
     expect(payload.points.every((point: { house?: number }) => point.house === undefined)).toBe(true);
     expect(payload.points.map((point: { id: string }) => point.id)).not.toContain("moon");
     expect(payload.points.map((point: { id: string }) => point.id)).not.toContain("asc");

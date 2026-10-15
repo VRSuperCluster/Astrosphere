@@ -6,7 +6,7 @@ import { calculateChart } from "./chart";
 import type { EphemerisProvider } from "./ephemeris";
 import { DAY_MS } from "./search";
 import { localDate } from "./timezone";
-import { transitReport } from "./transits";
+import { calendarWindow, transitReport } from "./transits";
 import { normalizeDegrees } from "./zodiac";
 
 const T0 = Date.UTC(2027, 0, 1);
@@ -107,6 +107,8 @@ describe("transitReport: exact hits", () => {
         house: chart.planets.sun.house,
         pass: i + 1,
         totalPasses: 3,
+        previousPassInWindow: i > 0,
+        nextPassInWindow: i < EXACT_DAYS.length - 1,
       })),
     );
   });
@@ -114,9 +116,9 @@ describe("transitReport: exact hits", () => {
   it("counts passes that came before the window", () => {
     const start = new Date(T0 + ((EXACT_DAYS[0] + EXACT_DAYS[1]) / 2) * DAY_MS);
     const { transits } = transitReport(natalChart(145), { start, planets: ["saturn"] }, loopingSaturn(145));
-    expect(toSun(transits).map((t) => [t.date, t.pass, t.totalPasses])).toEqual([
-      [dateOf(EXACT_DAYS[1]), 2, 3],
-      [dateOf(EXACT_DAYS[2]), 3, 3],
+    expect(toSun(transits).map((t) => [t.date, t.pass, t.totalPasses, t.previousPassInWindow, t.nextPassInWindow])).toEqual([
+      [dateOf(EXACT_DAYS[1]), 2, 3, false, true],
+      [dateOf(EXACT_DAYS[2]), 3, 3, true, false],
     ]);
   });
 
@@ -124,7 +126,9 @@ describe("transitReport: exact hits", () => {
     // Twelve months ending between the first and second pass.
     const start = new Date(T0 + ((EXACT_DAYS[0] + EXACT_DAYS[1]) / 2 - 365) * DAY_MS);
     const { transits } = transitReport(natalChart(145), { start, planets: ["saturn"] }, loopingSaturn(145));
-    expect(toSun(transits).map((t) => [t.date, t.pass, t.totalPasses])).toEqual([[dateOf(EXACT_DAYS[0]), 1, 3]]);
+    expect(toSun(transits).map((t) => [t.date, t.pass, t.totalPasses, t.previousPassInWindow, t.nextPassInWindow])).toEqual([
+      [dateOf(EXACT_DAYS[0]), 1, 3, false, false],
+    ]);
   });
 
   it("follows a run across 0°", () => {
@@ -190,7 +194,10 @@ describe("transitReport: exact hits", () => {
     const later = new Date(T0 + 100 * DAY_MS);
     const a = transitReport(natalChart(145), { start: new Date(T0), planets: ["saturn"] }, loopingSaturn(145));
     const b = transitReport(natalChart(145), { start: later, planets: ["saturn"] }, loopingSaturn(145));
-    expect(toSun(b.transits)).toEqual(toSun(a.transits).slice(1));
+    const labels = (t: Transit) => [t.id, t.date, t.pass, t.totalPasses];
+    expect(toSun(b.transits).map(labels)).toEqual(toSun(a.transits).slice(1).map(labels));
+    expect(toSun(a.transits)[1].previousPassInWindow).toBe(true);
+    expect(toSun(b.transits)[0].previousPassInWindow).toBe(false);
   });
 
   it("lists hits in date order with unique IDs", () => {
@@ -243,6 +250,29 @@ describe("transitReport: months", () => {
       "2028-01",
       "2028-02",
     ]);
+  });
+
+  it("runs from the start of the day through 31 December of the next year", () => {
+    const cases = [
+      ["2026-10-15", 15, "2026-10"],
+      ["2026-01-02", 24, "2026-01"],
+      ["2026-12-31", 13, "2026-12"],
+    ] as const;
+    for (const [iso, count, first] of cases) {
+      const report = transitReport(
+        natalChart(145),
+        { ...calendarWindow(new Date(`${iso}T18:00:00Z`), "UTC"), planets: ["saturn"] },
+        loopingSaturn(145),
+      );
+      expect(report.window).toEqual({ start: iso, end: "2028-01-01" });
+      expect(report.months).toHaveLength(count);
+      expect(report.months[0].month).toBe(first);
+      expect(report.months.at(-1)?.month).toBe("2027-12");
+    }
+
+    const evening = new Date("2026-10-15T22:30:00Z");
+    expect(localDate(calendarWindow(evening, "Asia/Beirut").start.getTime(), "Asia/Beirut")).toBe("2026-10-16");
+    expect(localDate(calendarWindow(evening, "Europe/London").start.getTime(), "Europe/London")).toBe("2026-10-15");
   });
 
   it("lists a transit as active in the month it is exact, with that month's hits", () => {
