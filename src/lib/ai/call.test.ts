@@ -98,6 +98,34 @@ describe("callClaude", () => {
     expect(sent[1].messages[2].content).toContain("cut off");
   });
 
+  it("starts a cut-off answer over, without sending the partial, when asked", async () => {
+    const { client, sent } = fakeClient({ text: VALID, stop: "max_tokens" }, { text: VALID });
+    await expect(
+      callClaude({ system: "system", user: "user", schema, maxTokens: 100, cutOff: "fresh", client }),
+    ).resolves.toMatchObject({ attempts: 2, problems: ["It was cut off before the JSON ended."] });
+    expect(sent[1].messages).toEqual(sent[0].messages);
+    expect(JSON.stringify(sent[1].messages)).not.toContain("patterns");
+  });
+
+  it("fails when the fresh retry is cut off too", async () => {
+    const { client, sent } = fakeClient(
+      { text: "PARTIAL-OUTPUT", stop: "max_tokens" },
+      { text: "STILL-PARTIAL", stop: "max_tokens" },
+    );
+    const error = await callClaude({
+      system: "system",
+      user: "user",
+      schema,
+      maxTokens: 100,
+      cutOff: "fresh",
+      client,
+    }).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(AiOutputError);
+    expect((error as AiOutputError).problems).toHaveLength(2);
+    expect(sent).toHaveLength(2);
+    expect(JSON.stringify(sent[1].messages)).not.toContain("PARTIAL-OUTPUT");
+  });
+
   it("never sends an empty assistant turn", async () => {
     const { client, sent } = fakeClient({ text: "" }, { text: VALID });
     await call(client);

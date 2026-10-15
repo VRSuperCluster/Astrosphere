@@ -44,6 +44,12 @@ describe("cacheKey", () => {
     expect(cacheKey(V1, ANSWERS)).not.toBe(cacheKey({ ...V1, promptVersion: "summary-2" }, ANSWERS));
   });
 
+  it("changes with the window start, and leaves a key alone when it has none", () => {
+    const dated = cacheKey(V1, ANSWERS, "2026-10-15");
+    expect(dated).not.toBe(cacheKey(V1, ANSWERS));
+    expect(dated).not.toBe(cacheKey(V1, ANSWERS, "2026-10-16"));
+  });
+
   it("changes with the output", () => {
     expect(cacheKey(V1, ANSWERS)).not.toBe(cacheKey({ ...V1, output: "calendar" }, ANSWERS));
   });

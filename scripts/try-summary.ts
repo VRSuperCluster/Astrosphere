@@ -6,39 +6,12 @@
  * Each fixture is birth data plus context answers; the chart is cast here, so
  * fixtures never go stale when the chart JSON changes. Pass many files to run a batch.
  */
-import { readFile } from "node:fs/promises";
-import { IANAZone } from "luxon";
-import { z } from "zod";
 import { AiOutputError, callClaude } from "@/lib/ai/call";
 import { buildSummaryPrompt, PROMPT_VERSION, SUMMARY_MAX_TOKENS, summarySchemaFor } from "@/lib/ai/outputs/summary";
-import { calculateChart } from "@/lib/astro/chart";
-import { CHANGE_STANCE_OPTIONS, LIFE_AREA_OPTIONS } from "@/lib/questionnaire/context-questions";
-
-const fixtureSchema = z.strictObject({
-  label: z.string(),
-  date: z.strictObject({ year: z.int(), month: z.int().min(1).max(12), day: z.int().min(1).max(31) }),
-  time: z.discriminatedUnion("known", [
-    z.strictObject({
-      known: z.literal(true),
-      time: z.strictObject({ hour: z.int().min(0).max(23), minute: z.int().min(0).max(59) }),
-    }),
-    z.strictObject({ known: z.literal(false) }),
-  ]),
-  place: z.strictObject({
-    name: z.string(),
-    latitude: z.number().min(-90).max(90),
-    longitude: z.number().min(-180).max(180),
-    timezone: z.string().refine((zone) => IANAZone.isValidZone(zone)),
-  }),
-  firstName: z.string().optional(),
-  lifeArea: z.enum(LIFE_AREA_OPTIONS.map((o) => o.value)).optional(),
-  changeStance: z.enum(CHANGE_STANCE_OPTIONS.map((o) => o.value)).optional(),
-});
+import { loadFixture } from "./fixture";
 
 async function run(path: string): Promise<boolean> {
-  const fixture = fixtureSchema.parse(JSON.parse(await readFile(path, "utf8")));
-  const { label, date, time, place, ...context } = fixture;
-  const chart = calculateChart({ date, time, place: { id: 0, ...place } });
+  const { label, chart, context } = await loadFixture(path);
 
   const started = performance.now();
   try {

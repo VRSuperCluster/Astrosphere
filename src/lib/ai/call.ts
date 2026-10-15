@@ -18,6 +18,11 @@ export interface ClaudeCall<T> {
   schema: z.ZodType<T>;
   maxTokens: number;
   client?: MessagesClient;
+  /**
+   * What a `max_tokens` stop does. `"repair"` (the default) sends the partial
+   * answer back. `"fresh"` drops it and repeats the original request once.
+   */
+  cutOff?: "repair" | "fresh";
 }
 
 export interface ClaudeResult<T> {
@@ -55,6 +60,8 @@ function anthropic(): MessagesClient {
 /**
  * Asks for JSON and validates it with `schema`. If the answer doesn't parse or
  * validate, the problem goes back to the model as one repair turn.
+ * With `cutOff: "fresh"`, a max_tokens stop is not repaired: the partial answer
+ * is dropped and the original request is sent once more.
  */
 export async function callClaude<T>({
   system,
@@ -62,13 +69,14 @@ export async function callClaude<T>({
   schema,
   maxTokens,
   client = anthropic(),
+  cutOff = "repair",
 }: ClaudeCall<T>): Promise<ClaudeResult<T>> {
   const messages: MessageParam[] = [{ role: "user", content: user }];
   const problems: string[] = [];
   const usage = { inputTokens: 0, outputTokens: 0, thinkingTokens: 0 };
 
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
-    // No `temperature`: current models reject it.
+    // No `temperature`: current models reject it. No thinking override: thinking stays on.
     const response = await client.messages.create({
       model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
       max_tokens: maxTokens,
@@ -78,6 +86,14 @@ export async function callClaude<T>({
     usage.inputTokens += response.usage.input_tokens;
     usage.outputTokens += response.usage.output_tokens;
     usage.thinkingTokens += response.usage.output_tokens_details?.thinking_tokens ?? 0;
+
+    // The caller asked not to repair a fragment. The next attempt is the original request again.
+    if (response.stop_reason === "max_tokens" && cutOff === "fresh") {
+      problems.push("It was cut off before the JSON ended.");
+      if (attempt === ATTEMPTS) break;
+      continue;
+    }
+
     const raw = textOf(response);
     const result = parseOutput(raw, schema, response.stop_reason === "max_tokens");
     if (result.ok) return { data: result.data, attempts: attempt, problems, usage };

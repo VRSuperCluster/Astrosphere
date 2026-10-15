@@ -8,9 +8,11 @@ import { QuestionPrompt } from "@/components/ui/QuestionPrompt";
 import { StepTransition } from "@/components/ui/StepTransition";
 import { clearAnswers, parseAnswers, useSavedAnswersJson } from "@/lib/questionnaire/storage";
 import type { Chart, ChartResponse } from "@/types/chart";
+import { CalendarDownload } from "./CalendarDownload";
 import { ChartSummary } from "./ChartSummary";
 import { ChartWheel, markersFor } from "./ChartWheel";
 import { UnknownTimeNote } from "./UnknownTimeNote";
+import { useCalendar } from "./useCalendar";
 import { useSummary } from "./useSummary";
 
 type ChartState = { status: "loading" } | { status: "failed" } | { status: "ready"; chart: Chart };
@@ -21,7 +23,9 @@ export function ChartScreen() {
   const saved = useSavedAnswersJson();
   const [state, setState] = useState<ChartState>({ status: "loading" });
   const [attempt, setAttempt] = useState(0);
-  const summary = useSummary(state.status === "ready" ? state.chart : null, saved);
+  const chart = state.status === "ready" ? state.chart : null;
+  const summary = useSummary(chart, saved);
+  const calendar = useCalendar(chart, saved);
 
   useEffect(() => {
     if (saved === undefined) return;
@@ -98,6 +102,7 @@ export function ChartScreen() {
           />
           <ChartSummary result={summary.result} onRetry={summary.retry} />
           {state.chart.birthTimeKnown ? null : <UnknownTimeNote />}
+          <CalendarDownload result={calendar.result} onRetry={calendar.retry} />
           <Link href="/" className={`inline-block ${buttonClassName("quiet")}`}>
             Change your answers
           </Link>

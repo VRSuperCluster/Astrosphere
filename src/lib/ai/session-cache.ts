@@ -12,8 +12,16 @@ export interface CacheVersion {
   promptVersion: string;
 }
 
-/** Same version and the same answers give the same key, whatever order the keys were saved in. */
-export function cacheKey({ output, promptVersion }: CacheVersion, answers: QuestionnaireAnswers): string {
+/**
+ * Same version and the same answers give the same key, whatever order the keys were saved in.
+ * `windowStart` (YYYY-MM-DD) is the calendar's extra: transits move at midnight, so yesterday's
+ * key must not be today's. Omit it for outputs that don't depend on the day.
+ */
+export function cacheKey(
+  { output, promptVersion }: CacheVersion,
+  answers: QuestionnaireAnswers,
+  windowStart?: string,
+): string {
   const material = canonicalJson([
     promptVersion,
     answers.birthDate ?? null,
@@ -28,6 +36,7 @@ export function cacheKey({ output, promptVersion }: CacheVersion, answers: Quest
     answers.firstName ?? null,
     answers.lifeArea ?? null,
     answers.changeStance ?? null,
+    ...(windowStart === undefined ? [] : [windowStart]),
   ]);
   return `astroscope.${output}.${hash(material)}`;
 }

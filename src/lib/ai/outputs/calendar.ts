@@ -1,0 +1,185 @@
+import type { Chart } from "@/types/chart";
+import type { Calendar } from "@/types/calendar";
+import type { SummaryContext } from "@/types/summary";
+import type { TransitReport } from "@/types/transit";
+import { transitReport } from "@/lib/astro/transits";
+import { chartFacts, describePerson } from "../chart-facts";
+import { callClaude, type ClaudeResult, type MessagesClient } from "../call";
+import { CALENDAR_ENTRY_EXAMPLES, MONTH_CARD_EXAMPLES } from "../examples/calendar";
+import { VOICE_BLOCK } from "../voice";
+import {
+  CALENDAR_MONTHS,
+  calendarModelSchemaFor,
+  type CalendarModelOutput,
+} from "./calendar-schema";
+
+export { CALENDAR_PROMPT_VERSION as PROMPT_VERSION } from "../versions";
+
+/**
+ * Room for about 7k of writing plus the model's thinking.
+ * A max_tokens stop is not repaired from the fragment: the request starts over once.
+ */
+export const CALENDAR_MAX_TOKENS = 16_000;
+
+export const PASS_INSTRUCTION =
+  "Each transit carries pass and totalPasses. They count the whole run, including hits before or after this year.\n" +
+  "- The first pass (pass 1, when totalPasses is more than 1) introduces the theme.\n" +
+  "- A middle pass (pass is greater than 1 and less than totalPasses) revisits it: this is back, and it is asking the question again.\n" +
+  "- The final pass (pass equals totalPasses, and totalPasses is more than 1) closes it: last time this comes up for a while — decide.\n" +
+  "- A single pass (totalPasses is 1) stands alone. Don't write it as part of a series.";
+
+export const NULL_HOUSE_INSTRUCTION =
+  "house is a number from 1 to 12, or null when the birth time is unknown. " +
+  "When house is null, don't name a life area on the strength of the data.";
+
+/** Same carve-out as the summary: the person's own focus answer may still steer the advice. */
+export const UNKNOWN_BIRTH_TIME_INSTRUCTION =
+  "The birth time is unknown, so the data has no houses and no rising point. " +
+  "Don't tie any entry or month to a specific area of life (work, home, money, relationships, health) on the strength of the data. " +
+  "Write about how the person thinks, feels, decides and reacts.";
+
+export const NO_PADDING_INSTRUCTION =
+  "Write one entry for each transit you are given, and one card for each month, including months with nothing exact in them. " +
+  "If only a few transits are listed, write only those. Do not invent entries to fill the year. The monthly cards carry a quiet year.";
+
+export interface CalendarRun {
+  calendar: Calendar;
+  attempts: number;
+  problems: string[];
+  usage: ClaudeResult<CalendarModelOutput>["usage"];
+}
+
+/**
+ * Writes the year and joins the model's words onto the engine's dates.
+ * Pass `report` in tests; otherwise the twelve months start from `now`.
+ */
+export async function generateCalendar({
+  chart,
+  context,
+  now = new Date(),
+  report = transitReport(chart, { start: now, months: CALENDAR_MONTHS }),
+  client,
+}: {
+  chart: Chart;
+  context: SummaryContext;
+  report?: TransitReport;
+  now?: Date;
+  client?: MessagesClient;
+}): Promise<CalendarRun> {
+  const { data, attempts, problems, usage } = await callClaude({
+    ...buildCalendarPrompt(chart, context, report),
+    schema: calendarModelSchemaFor(report),
+    maxTokens: CALENDAR_MAX_TOKENS,
+    cutOff: "fresh",
+    client,
+  });
+  return { calendar: joinCalendar(report, data), attempts, problems, usage };
+}
+
+export function buildCalendarPrompt(
+  chart: Chart,
+  context: SummaryContext,
+  report: TransitReport,
+): { system: string; user: string } {
+  return {
+    system: systemPrompt(chart),
+    user: JSON.stringify(payload(chart, context, report), null, 2),
+  };
+}
+
+/** Engine order, engine dates. The model's date, if it invented one, is ignored. */
+export function joinCalendar(report: TransitReport, model: CalendarModelOutput): Calendar {
+  const entries = new Map(model.entries.map((entry) => [entry.transitId, entry]));
+  const months = new Map(model.months.map((month) => [month.month, month]));
+  return {
+    generatedOn: report.window.start,
+    entries: report.transits.map((transit) => {
+      const entry = entries.get(transit.id);
+      if (!entry) throw new Error(`No text for transit ${transit.id}`);
+      return { transitId: transit.id, date: transit.date, title: entry.title, description: entry.description };
+    }),
+    months: report.months.map((month) => {
+      const card = months.get(month.month);
+      if (!card) throw new Error(`No text for month ${month.month}`);
+      return { month: month.month, title: card.title, description: card.description };
+    }),
+  };
+}
+
+function systemPrompt(chart: Chart): string {
+  const entries = CALENDAR_ENTRY_EXAMPLES.map(
+    (example) => `[${example.register}; ${example.internal}]\ntitle: ${example.title}\ndescription: ${example.description}`,
+  ).join("\n\n");
+  const months = MONTH_CARD_EXAMPLES.map(
+    (example) => `[${example.internal}]\ntitle: ${example.title}\ndescription: ${example.description}`,
+  ).join("\n\n");
+
+  return [
+    VOICE_BLOCK,
+    `TASK
+You are writing one person's next year, as calendar entries: a headline and a short note for each transit, and a card for each month. The person reads these as events in their calendar. Build them from the data in the user message. The person never sees that data.`,
+    `PASSES
+${PASS_INSTRUCTION}`,
+    `HOUSE
+${NULL_HOUSE_INSTRUCTION}`,
+    chart.birthTimeKnown ? null : `BIRTH TIME UNKNOWN\n${UNKNOWN_BIRTH_TIME_INSTRUCTION}`,
+    `HOW MANY
+${NO_PADDING_INSTRUCTION}`,
+    `OUTPUT
+Return one JSON object and nothing else:
+{
+  "entries": [{ "transitId": "the id you were given", "title": "the day's headline", "description": "2–4 sentences" }],
+  "months": [{ "month": "YYYY-MM", "title": "the month's headline", "description": "2–4 sentences: what the month is for, and one thing to watch" }]
+}
+- Use each transitId exactly once, and no others. Use each month exactly once, and no others.
+- Do not write dates, weekdays, or month names. The date on each transit is only so you can feel how far apart the passes are. The calendar adds the dates.
+- A title is one line. A description is 2–4 sentences.
+- Use the first name at most once in the whole year, or not at all.`,
+    `EXAMPLES
+The notes in brackets describe the transit or the month behind each example. They are for you; never reuse their wording. Match the quality, not the content.
+
+Dated entries:
+
+${entries}
+
+Monthly cards:
+
+${months}`,
+  ]
+    .filter((part) => part !== null)
+    .join("\n\n");
+}
+
+function payload(chart: Chart, context: SummaryContext, report: TransitReport) {
+  return {
+    person: describePerson(context),
+    ...chartFacts(chart),
+    transits: report.transits.map((transit) => ({
+      id: transit.id,
+      date: transit.date,
+      transiting: transit.transiting,
+      natal: transit.natal,
+      aspect: transit.aspect,
+      house: transit.house,
+      pass: transit.pass,
+      totalPasses: transit.totalPasses,
+    })),
+    months: report.months.map((month) => ({
+      month: month.month,
+      active: month.active.map((item) => ({
+        transiting: item.transiting,
+        natal: item.natal,
+        aspect: item.aspect,
+        closestOrb: item.closestOrb,
+        orbAtStart: item.orbAtStart,
+        orbAtEnd: item.orbAtEnd,
+        transitIds: item.transitIds,
+      })),
+      stations: month.stations.map((station) => ({
+        planet: station.planet,
+        direction: station.direction,
+        date: station.date,
+      })),
+    })),
+  };
+}
