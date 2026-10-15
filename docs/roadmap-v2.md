@@ -76,6 +76,7 @@ Known risk: **sign-boundary sensitivity.** When the Ascendant or a planet sits w
 - Physical annual planner.
 - Synastry / compatibility reports.
 - Living calendar via Google Calendar API (needs accounts).
+- **Peaks inside a long placement.** Under a placement's date range in the calendar's long view, mark when a slow planet is closest to a natal point, as a line under the range rather than a new event. Not in the MVP.
 
 ## Infrastructure V2 adds
 

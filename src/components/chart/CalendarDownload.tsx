@@ -1,13 +1,26 @@
 import { Button } from "@/components/ui/Button";
 import { StepTransition } from "@/components/ui/StepTransition";
+import { downloadIcs } from "@/lib/calendar/download";
+import { buildIcs, icsFilename, type IcsBirth } from "@/lib/calendar/ics";
 import type { Calendar } from "@/types/calendar";
 import type { CachedResult } from "./useCachedResult";
 
 /**
- * The download area. The file itself comes later; this is the wait and the retry.
+ * The download area. The file is built in the browser from the calendar already
+ * fetched; nothing is stored on the way to the download.
  * The wheel and the summary above are not this component's to change.
  */
-export function CalendarDownload({ result, onRetry }: { result: CachedResult<Calendar>; onRetry: () => void }) {
+export function CalendarDownload({
+  result,
+  onRetry,
+  birth,
+  firstName,
+}: {
+  result: CachedResult<Calendar>;
+  onRetry: () => void;
+  birth: IcsBirth | null;
+  firstName?: string;
+}) {
   return (
     <StepTransition key={result.status}>
       {result.status === "loading" ? (
@@ -24,7 +37,16 @@ export function CalendarDownload({ result, onRetry }: { result: CachedResult<Cal
           </Button>
         </div>
       ) : (
-        <p className="text-lg text-pretty">Your year is written.</p>
+        <div className="space-y-4">
+          <p className="text-lg text-pretty">Your year is written.</p>
+          {birth ? (
+            <Button
+              onClick={() => downloadIcs(icsFilename(result.data, firstName), buildIcs(result.data, birth))}
+            >
+              Download your year
+            </Button>
+          ) : null}
+        </div>
       )}
     </StepTransition>
   );

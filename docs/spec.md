@@ -43,7 +43,7 @@ The flow is fully self-serve. Nothing is sent to the person by a human or on a d
 
 **CORE POSITIONING**
 
-Existing astrology apps fall into two camps: full mystical language (Susan Miller, Cafe Astrology) or cold brutalist aesthetics (Co–Star). Neither speaks to the growing audience that is interested in self-awareness tools but turned off by horoscope culture. This product occupies the gap: warm, serif, Japanese-inspired minimalism with a voice that is honest, slightly confrontational, and deeply personal. No zodiac jargon in the output. Astrology in the hashtags and metadata only.
+Existing astrology apps fall into two camps: full mystical language (Susan Miller, Cafe Astrology) or cold brutalist aesthetics (Co–Star). Neither speaks to the growing audience that is interested in self-awareness tools but turned off by horoscope culture. This product occupies the gap: warm, serif, Japanese-inspired minimalism with a voice that is honest, slightly confrontational, and deeply personal. No zodiac jargon in the model's text. In the calendar file, astrology appears only in code-rendered labels, footers and title markers.
 
 **KEY DIFFERENTIATOR**
 
@@ -60,6 +60,8 @@ Honest, warm, slightly confrontational. Like a therapist who skips the pleasantr
 *Instead of:* "Saturn transiting your 7th house — a period of testing in partnerships."
 
 *We say:* "The next few months are going to pressure-test your closest relationships. You'll feel the urge to either commit harder or walk away — that tension is the point. Ask yourself: am I staying because this is real, or because leaving feels harder?"
+
+The sentences the model writes stay free of astrology terms. In the calendar file, code adds astrology as labels, footers and title markers. That is the only place it appears in the product.
 
 **VISUAL IDENTITY**
 
@@ -160,7 +162,9 @@ The primary output: an ICS file from the generation day through 31 December of t
 
 **1. DATED TRANSIT ENTRIES**
 
-One all-day event per exact transit hit. Each has a title (the psychological headline) and a description (two to four sentences of actionable, personal insight). No astrological terminology in the user-facing text.
+One all-day event per exact transit hit. The model writes a title and a description with no astrological terminology. The file prefixes the title with ✦ and, after the description, adds a blank line, a line that is only —, and a footer from the engine: "Saturn square your Sun · 2 of 3". The pass is left off when the run has one hit. Points are plain words ("your Ascendant", "your Moon").
+
+A house change is its own all-day event on the day it happens. The title is → plus "Jupiter enters your 1st house". The description is the new stay's theme, then the same footer.
 
 Example:
 
@@ -174,13 +178,17 @@ Example:
 
 One all-day event per month, from the generation month through December of the next year (13 cards when generation falls on 31 December, 24 when it falls on 1 January). The first card is dated on the generation day if it falls after the 1st; every later card is on the 1st.
 
-On a timed chart the card has two layers. The backdrop is the outer planets' Whole Sign house stays active on the card's date (the generation day for the first card, the 1st after that), in the order Jupiter, Saturn, Uranus, Neptune, Pluto. The engine finds every stay that touches the window and records the real start and end, including dates outside the window. The model writes each stay once, as one or two sentences of theme with no dates, keyed by a deterministic id (`jupiter-12-2026-06-30`). Code puts the span in front, month-precise: "Until July 2027 — …", or "Since July 2027 until August 2028 — …" when the stay began during the window.
+On a timed chart the card's description is the month line, a blank line, then the heading THE LONG VIEW. Under that, each outer planet's stay active on the card's date (Jupiter, then Saturn, Uranus, Neptune, Pluto) is a header and the theme:
 
-If a planet changes house after the card's date and before the month ends, the card adds a line after the backdrop: "From 26 July — " plus the new stay's theme. The next month's card shows that stay as the backdrop.
+FEB 2026 – APR 2028 · Saturn in your 8th house
+
+The engine finds every stay that touches the window and records the real start and end, including dates outside the window. The model writes each stay once, as one or two sentences of theme with no dates and no astrology terms, keyed by a deterministic id (`jupiter-12-2026-06-30`). Code renders the header. The month title is prefixed with ◐.
+
+If a planet changes house after the card's date and before the month ends, the card adds a final item: "26 JUL 2027 · Jupiter enters your 1st house", then the new stay's theme. The next month's card shows that stay in the long view.
 
 The month's own text is what is active that month: one or two sentences, or one line when nothing is in orb.
 
-A chart without a birth time has no backdrop. Its month text is unchanged: two to four sentences on what the month is for, and one thing to watch.
+A chart without a birth time has no houses, so no long view. Its month text is unchanged: two to four sentences on what the month is for, and one thing to watch. Dated entries still get the aspect footer.
 
 These cards exist because of a real calendar limitation: events that span weeks or months take up space in every week of the month view and bury the dated entries. One card per month carries the background instead.
 
@@ -313,7 +321,7 @@ One prompt module per output type, sharing a common voice block and the gold-sta
 
 **CALENDAR FILE**
 
-The ICS file is built by a pure function in `src/lib/calendar/` from the engine's dated transits joined with the model's text, plus the monthly cards. It contains no secrets, so the client can build it from the calendar call's response and trigger the download as a Blob. No server-side storage is needed between generation and download. Format rules are in `project.mdc` (RFC 5545, all-day events, CRLF, folding, escaping, stable UIDs).
+The ICS file is built by a pure function in `src/lib/calendar/` from the engine's dated transits joined with the model's text, plus the monthly cards. It contains no secrets, so the client can build it from the calendar call's response and trigger the download as a Blob. No server-side storage is needed between generation and download. A dated entry's UID is its transit id plus a hash of the birth data; a monthly card's is its `YYYY-MM` plus the same hash; both end in `@astroscope.app`. The monthly description is the month line, a blank line, THE LONG VIEW, then each stay's date-range header and theme, then a house-change item when that month has one. A house change is also its own event. Titles are prefixed from one marker map: ◐ month, ✦ dated entry, → house change. The filename is the first name and the window's last year. Format rules are in `project.mdc` (RFC 5545, all-day events, CRLF, folding, escaping).
 
 **COST**
 

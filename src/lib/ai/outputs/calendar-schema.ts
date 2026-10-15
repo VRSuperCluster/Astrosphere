@@ -1,9 +1,12 @@
 import { z } from "zod";
 import type { Calendar, CalendarChange, CalendarPlacement } from "@/types/calendar";
 import type { PlanetId } from "@/types/chart";
+import type { TransitAspectId, TransitTarget } from "@/types/transit";
 import type { TransitReport } from "@/types/transit";
 
 const OUTER: [PlanetId, ...PlanetId[]] = ["jupiter", "saturn", "uranus", "neptune", "pluto"];
+const POINTS: [TransitTarget, ...TransitTarget[]] = ["sun", "moon", "mercury", "venus", "mars", "asc"];
+const ASPECTS: [TransitAspectId, ...TransitAspectId[]] = ["conjunction", "square", "opposition"];
 
 /**
  * Cards run from the generation month through December of the next year.
@@ -102,6 +105,11 @@ export const calendarSchema: z.ZodType<Calendar> = z.object({
       date: day,
       title: z.string().trim().min(1),
       description: z.string().trim().min(1),
+      transiting: z.enum(OUTER),
+      natal: z.enum(POINTS),
+      aspect: z.enum(ASPECTS),
+      pass: z.int().min(1),
+      totalPasses: z.int().min(1),
     }),
   ),
   months: z

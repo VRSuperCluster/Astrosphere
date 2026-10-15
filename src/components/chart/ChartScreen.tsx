@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { Button, buttonClassName } from "@/components/ui/Button";
 import { QuestionPrompt } from "@/components/ui/QuestionPrompt";
 import { StepTransition } from "@/components/ui/StepTransition";
+import type { IcsBirth } from "@/lib/calendar/ics";
 import { clearAnswers, parseAnswers, useSavedAnswersJson } from "@/lib/questionnaire/storage";
 import type { Chart, ChartResponse } from "@/types/chart";
 import { CalendarDownload } from "./CalendarDownload";
@@ -61,7 +62,18 @@ export function ChartScreen() {
   }, [saved, attempt, router]);
 
   if (!saved) return null;
-  const firstName = parseAnswers(saved)?.firstName;
+  const answers = parseAnswers(saved);
+  const firstName = answers?.firstName;
+  const birth: IcsBirth | null =
+    answers?.birthDate && answers.birthTime && answers.placeOfBirth
+      ? {
+          date: answers.birthDate,
+          time: answers.birthTime,
+          latitude: answers.placeOfBirth.latitude,
+          longitude: answers.placeOfBirth.longitude,
+          timezone: answers.placeOfBirth.timezone,
+        }
+      : null;
 
   return (
     <StepTransition key={state.status}>
@@ -102,7 +114,7 @@ export function ChartScreen() {
           />
           <ChartSummary result={summary.result} onRetry={summary.retry} />
           {state.chart.birthTimeKnown ? null : <UnknownTimeNote />}
-          <CalendarDownload result={calendar.result} onRetry={calendar.retry} />
+          <CalendarDownload result={calendar.result} onRetry={calendar.retry} birth={birth} firstName={firstName} />
           <Link href="/" className={`inline-block ${buttonClassName("quiet")}`}>
             Change your answers
           </Link>

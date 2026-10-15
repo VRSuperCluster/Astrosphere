@@ -73,8 +73,9 @@ describe("house placements", () => {
     expect(july?.changes).toEqual([{ date: "2027-07-26", placementId: jupiter[1].id }]);
     expect(august?.placementIds).toContain(jupiter[1].id);
     expect(august?.changes).toEqual([]);
-    expect(saturn?.start < report.window.start).toBe(true);
-    expect(saturn?.end > report.window.end).toBe(true);
+    expect(saturn?.start).toBeDefined();
+    expect(saturn && saturn.start < report.window.start).toBe(true);
+    expect(saturn && saturn.end > report.window.end).toBe(true);
     expect(report.months.every((month) => month.placementIds.length === 5)).toBe(true);
   });
 

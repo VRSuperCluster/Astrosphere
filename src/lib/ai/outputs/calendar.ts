@@ -117,7 +117,17 @@ export function joinCalendar(report: TransitReport, model: CalendarModelOutput):
     entries: report.transits.map((transit) => {
       const entry = entries.get(transit.id);
       if (!entry) throw new Error(`No text for transit ${transit.id}`);
-      return { transitId: transit.id, date: transit.date, title: entry.title, description: entry.description };
+      return {
+        transitId: transit.id,
+        date: transit.date,
+        title: entry.title,
+        description: entry.description,
+        transiting: transit.transiting,
+        natal: transit.natal,
+        aspect: transit.aspect,
+        pass: transit.pass,
+        totalPasses: transit.totalPasses,
+      };
     }),
     months: report.months.map((month) => {
       const card = months.get(month.month);

@@ -7,7 +7,7 @@
  * entries came back, so a run can be set against the 300s route limit.
  */
 import { AiOutputError } from "@/lib/ai/call";
-import { backdropLine, changeLine } from "@/lib/calendar/backdrop";
+import { monthDescription, transitFooter } from "@/lib/calendar/labels";
 import { PROMPT_VERSION, generateCalendar } from "@/lib/ai/outputs/calendar";
 import { loadFixture } from "./fixture";
 
@@ -26,7 +26,8 @@ async function run(path: string): Promise<boolean> {
     for (const problem of problems) console.log(`Rejected:\n${problem}\n`);
     for (const entry of calendar.entries) {
       console.log(`${entry.date}  ${entry.title}`);
-      console.log(`   ${entry.description}\n`);
+      console.log(`   ${entry.description}`);
+      console.log(`   — ${transitFooter(entry)}\n`);
     }
     const seen = new Set<string>();
     for (const month of calendar.months) {
@@ -39,9 +40,7 @@ async function run(path: string): Promise<boolean> {
     }
     for (const month of calendar.months) {
       console.log(`${month.month}  ${month.title}`);
-      console.log(`   ${month.description}`);
-      for (const placement of month.placements) console.log(`   · ${backdropLine(placement, calendar.generatedOn)}`);
-      for (const change of month.changes) console.log(`   · ${changeLine(change)}`);
+      console.log(monthDescription(month));
       console.log("");
     }
     return true;

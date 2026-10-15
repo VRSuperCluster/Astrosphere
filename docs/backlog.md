@@ -125,6 +125,7 @@ Do A, then the two checks in B before designing the calendar call: they decide i
   - spec section 7's test criterion "a rule a person could actually do this week"
 - **Quiet-month cards converge on one template.** The live run used "Nothing is demanded of you, and that's the point" (chart A, October) and "Nothing is pushing on you, and that is the point" (chart B, June), both followed by "Watch for the urge to…". Vary them. On the 24-card run, every chart A card in 2027 also closed with "Watch for", so the tic is not limited to quiet months.
 - **24-card slips to fix with the prompt, separate from any call split.** Chart B's 2027 cards say "January's choices", "the spring", and "Nothing exact". Month names, seasons, and the engine's word "exact" are already forbidden.
+- **Grep list for the batch review:** `this week`, month names, season names, `exact`. Chart A's October 2026 month line says "Nothing dramatic is exact".
 - **Hedge.** Chart A's 21 August 2027 entry says "is likely what needs to change". Same dodge as "you may feel". Catch it in the batch review.
 - **July month line is unclear ("builds toward a pitch").** Chart A's July 2027 card. The month line should say what is happening.
 - **Dated-entry volume.** Spec section 4 estimates 15–35 dated entries a year. The 12-month live run had 8 on chart A and 5 on chart B. When the 20 fixtures exist, record the count for each, then replace that estimate with the real range. Don't update the spec from these two alone.

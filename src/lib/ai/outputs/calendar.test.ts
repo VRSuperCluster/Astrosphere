@@ -219,6 +219,8 @@ describe("generateCalendar", () => {
     expect(calendar.entries.map((entry) => [entry.transitId, entry.date, entry.title])).toEqual(
       REPORT.transits.map((item) => [item.id, item.date, `Title for ${item.id}`]),
     );
+    expect(calendar.entries[0]).toMatchObject({ transiting: "saturn", natal: "sun", aspect: "square", pass: 1, totalPasses: 3 });
+    expect(calendar.entries[2]).toMatchObject({ transiting: "jupiter", aspect: "conjunction", natal: "venus", totalPasses: 1 });
     expect(calendar.entries.map((entry) => entry.date)).not.toContain("1999-01-01");
     expect(calendar.months.map((month) => month.month)).toEqual(REPORT.months.map((month) => month.month));
     expect(calendar.months[0].placements.map((placement) => [placement.id, placement.text])).toEqual([

@@ -1,14 +1,23 @@
-import type { Chart } from "./chart";
+import type { Chart, PlanetId } from "./chart";
 import type { SummaryContext } from "./summary";
-import type { HousePlacement } from "./transit";
+import type { HousePlacement, TransitAspectId, TransitTarget } from "./transit";
 
-/** One dated transit, with the engine's date and the model's words. */
+/**
+ * One dated transit. The title and description are the model's.
+ * The rest is copied from the engine so the file can label the event.
+ */
 export interface CalendarEntry {
   transitId: string;
   /** YYYY-MM-DD from the transit engine. The model never supplies this. */
   date: string;
   title: string;
   description: string;
+  transiting: PlanetId;
+  natal: TransitTarget;
+  aspect: TransitAspectId;
+  pass: number;
+  /** Hits in the whole run. A footer names the pass only when this is more than 1. */
+  totalPasses: number;
 }
 
 /** A house stay with the one or two sentences written for it. */
